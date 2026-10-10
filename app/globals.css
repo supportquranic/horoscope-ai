@@ -983,6 +983,57 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   font-weight: 700;
 }
 
+/* Straight Underline for Year Tab */
+.cal-straight-line {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 22px;
+  height: 1.5px;
+  background: rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Year Pill Item (Straight line, pill shape instead of circle) */
+.cal-year-pill-item {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  white-space: nowrap;
+  outline: none;
+  box-shadow: none !important;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform, opacity;
+}
+
+.cal-year-pill-item:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.cal-year-pill-item.selected {
+  background: #ffffff;
+  color: #0d1334;
+  font-weight: 700;
+  border-color: #ffffff;
+  box-shadow: none !important; /* No glow */
+}
+
 /* Bottom Footer */
 .cal-footer-bar {
   display: flex;

@@ -394,6 +394,16 @@ function parseBirthDate(val) {
   return { year: 2000, month: 8, day: 23, isSet: false };
 }
 
+function getRolledDate(baseYear, baseMonth, baseDay, offsetDays) {
+  const d = new Date(baseYear, baseMonth - 1, baseDay + offsetDays);
+  return {
+    year: d.getFullYear(),
+    month: d.getMonth() + 1,
+    day: d.getDate(),
+    weekday: WEEKDAY_NAMES[d.getDay()]
+  };
+}
+
 function hour(r) {
   const h = Math.floor(r() * 12) + 1;
   const m = Math.floor(r() * 12) * 5;
@@ -784,11 +794,10 @@ export default function OrbitApp() {
 
   const stepCalItem = (direction) => {
     if (calendarTab === "day") {
-      const maxD = new Date(currentBirthParts.year, currentBirthParts.month, 0).getDate();
-      const nextD = Math.max(1, Math.min(maxD, currentBirthParts.day + direction));
-      updateBirthDate(currentBirthParts.year, currentBirthParts.month, nextD);
+      const rolled = getRolledDate(currentBirthParts.year, currentBirthParts.month, currentBirthParts.day, direction);
+      updateBirthDate(rolled.year, rolled.month, rolled.day);
     } else if (calendarTab === "month") {
-      const nextM = Math.max(1, Math.min(12, currentBirthParts.month + direction));
+      const nextM = ((currentBirthParts.month - 1 + direction) % 12 + 12) % 12 + 1;
       updateBirthDate(currentBirthParts.year, nextM, currentBirthParts.day);
     } else if (calendarTab === "year") {
       const nextY = Math.max(1930, Math.min(2026, currentBirthParts.year + direction));
@@ -799,7 +808,7 @@ export default function OrbitApp() {
   const handleCalTouchStart = (e) => {
     if (e.touches.length === 1) {
       calDragRef.current.startX = e.touches[0].clientX;
-      calDragRef.current.deltaX = 0;
+      calDragRef.current.currentX = e.touches[0].clientX;
       calDragRef.current.isDragging = true;
       setIsCalDragging(true);
     }
@@ -807,9 +816,10 @@ export default function OrbitApp() {
 
   const handleCalTouchMove = (e) => {
     if (!calDragRef.current.isDragging || e.touches.length !== 1) return;
-    const dx = e.touches[0].clientX - calDragRef.current.startX;
-    calDragRef.current.deltaX = dx;
-    const damped = Math.sign(dx) * Math.min(Math.abs(dx), 80);
+    const x = e.touches[0].clientX;
+    calDragRef.current.currentX = x;
+    const dx = x - calDragRef.current.startX;
+    const damped = Math.sign(dx) * Math.min(Math.abs(dx), 90);
     setCalDragOffset(damped);
   };
 
@@ -818,27 +828,29 @@ export default function OrbitApp() {
     calDragRef.current.isDragging = false;
     setIsCalDragging(false);
     setCalDragOffset(0);
-    const dx = calDragRef.current.deltaX;
+    const dx = calDragRef.current.currentX - calDragRef.current.startX;
     if (dx > 20) {
       stepCalItem(-1);
     } else if (dx < -20) {
       stepCalItem(1);
     }
-    calDragRef.current.deltaX = 0;
+    calDragRef.current.startX = 0;
+    calDragRef.current.currentX = 0;
   };
 
   const handleCalMouseDown = (e) => {
     calDragRef.current.startX = e.clientX;
-    calDragRef.current.deltaX = 0;
+    calDragRef.current.currentX = e.clientX;
     calDragRef.current.isDragging = true;
     setIsCalDragging(true);
   };
 
   const handleCalMouseMove = (e) => {
     if (!calDragRef.current.isDragging) return;
-    const dx = e.clientX - calDragRef.current.startX;
-    calDragRef.current.deltaX = dx;
-    const damped = Math.sign(dx) * Math.min(Math.abs(dx), 80);
+    const x = e.clientX;
+    calDragRef.current.currentX = x;
+    const dx = x - calDragRef.current.startX;
+    const damped = Math.sign(dx) * Math.min(Math.abs(dx), 90);
     setCalDragOffset(damped);
   };
 
@@ -847,62 +859,60 @@ export default function OrbitApp() {
     calDragRef.current.isDragging = false;
     setIsCalDragging(false);
     setCalDragOffset(0);
-    const dx = calDragRef.current.deltaX;
+    const dx = calDragRef.current.currentX - calDragRef.current.startX;
     if (dx > 20) {
       stepCalItem(-1);
     } else if (dx < -20) {
       stepCalItem(1);
     }
-    calDragRef.current.deltaX = 0;
+    calDragRef.current.startX = 0;
+    calDragRef.current.currentX = 0;
   };
 
   const getArchItems = () => {
-    const offsets = [-3, -2, -1, 0, 1, 2, 3];
-
     if (calendarTab === "day") {
-      const maxD = new Date(currentBirthParts.year, currentBirthParts.month, 0).getDate();
+      const offsets = [-3, -2, -1, 0, 1, 2, 3];
       return offsets.map((k) => {
-        const d = currentBirthParts.day + k;
-        if (d < 1 || d > maxD) return { k, hidden: true };
-        const dObj = new Date(currentBirthParts.year, currentBirthParts.month - 1, d);
-        const weekday = WEEKDAY_NAMES[dObj.getDay()];
+        const rolled = getRolledDate(currentBirthParts.year, currentBirthParts.month, currentBirthParts.day, k);
         return {
           k,
-          val: d,
-          top: weekday,
-          bottom: String(d),
-          hidden: false,
-          isSelected: k === 0
+          val: `${rolled.year}-${rolled.month}-${rolled.day}`,
+          rolled,
+          top: rolled.weekday,
+          bottom: String(rolled.day),
+          isSelected: k === 0,
+          isYear: false
         };
       });
     }
 
     if (calendarTab === "month") {
+      const offsets = [-3, -2, -1, 0, 1, 2, 3];
       return offsets.map((k) => {
-        const m = currentBirthParts.month + k;
-        if (m < 1 || m > 12) return { k, hidden: true };
+        const m = ((currentBirthParts.month - 1 + k) % 12 + 12) % 12 + 1;
         return {
           k,
           val: m,
           top: String(m).padStart(2, "0"),
           bottom: MONTH_NAMES[m - 1].slice(0, 3),
-          hidden: false,
-          isSelected: k === 0
+          isSelected: k === 0,
+          isYear: false
         };
       });
     }
 
     // calendarTab === "year"
+    const offsets = [-2, -1, 0, 1, 2];
     return offsets.map((k) => {
       const y = currentBirthParts.year + k;
-      if (y < 1930 || y > 2026) return { k, hidden: true };
+      if (y < 1930 || y > 2026) return { k, hidden: true, isYear: true };
       return {
         k,
         val: y,
         top: `'${String(y).slice(-2)}`,
         bottom: String(y),
-        hidden: false,
-        isSelected: k === 0
+        isSelected: k === 0,
+        isYear: true
       };
     });
   };
@@ -1681,7 +1691,7 @@ export default function OrbitApp() {
                 </div>
               </div>
 
-              {/* Unified Arched Reel Stage (Identical Curved Interaction for Day, Month, and Year) */}
+              {/* Unified Arched Reel Stage (Circular motion for Day/Month, Straight line with Pills for Year) */}
               <div
                 className="cal-arc-stage"
                 role="region"
@@ -1694,19 +1704,61 @@ export default function OrbitApp() {
                 onMouseUp={handleCalMouseUp}
                 onMouseLeave={handleCalMouseUp}
               >
-                {/* Underlying Curved Arch Line */}
-                <div className="cal-arc-bg" aria-hidden="true">
-                  <svg viewBox="0 0 340 50" preserveAspectRatio="none" className="cal-arc-svg">
-                    <path d="M 12,46 Q 170,12 328,46" fill="none" stroke="rgba(255, 255, 255, 0.22)" strokeWidth="1.5" />
-                  </svg>
-                </div>
+                {/* Underline: Curved Arch for Day/Month, Straight Line for Year */}
+                {calendarTab === "year" ? (
+                  <div className="cal-straight-line" aria-hidden="true" />
+                ) : (
+                  <div className="cal-arc-bg" aria-hidden="true">
+                    <svg viewBox="0 0 340 54" preserveAspectRatio="none" className="cal-arc-svg">
+                      <path d="M 24,50 Q 170,10 316,50" fill="none" stroke="rgba(255, 255, 255, 0.22)" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+                )}
 
-                {/* Arched Items Riding Along the Curved Underline */}
+                {/* Items */}
                 {getArchItems().map((item) => {
                   if (item.hidden) return null;
                   const k = item.k;
-                  const x = k * 45 + (isCalDragging ? calDragOffset * 0.45 : 0);
-                  const y = k * k * 3.4;
+
+                  if (item.isYear) {
+                    // Straight horizontal rail layout with pills (No circle!)
+                    const x = k * 74 + (isCalDragging ? calDragOffset * 0.5 : 0);
+                    const scale = k === 0 ? 1 : 0.88;
+                    const opacity = k === 0 ? 1 : Math.max(0.28, 1 - Math.abs(k) * 0.35);
+                    const zIndex = 10 - Math.abs(k);
+
+                    return (
+                      <button
+                        key={`${calendarTab}-${item.val}`}
+                        type="button"
+                        className={`cal-year-pill-item ${item.isSelected ? "selected" : ""}`}
+                        style={{
+                          transform: `translate(calc(-50% + ${x}px), 0px) scale(${scale})`,
+                          opacity: opacity,
+                          zIndex: zIndex,
+                          transition: isCalDragging
+                            ? "none"
+                            : "transform 0.52s cubic-bezier(0.34, 1.45, 0.64, 1), opacity 0.35s ease"
+                        }}
+                        onClick={() => {
+                          if (Math.abs(calDragRef.current.currentX - calDragRef.current.startX) < 6) {
+                            if (k !== 0) stepCalItem(k);
+                          }
+                        }}
+                        aria-label={`Select year ${item.bottom}`}
+                      >
+                        {item.bottom}
+                      </button>
+                    );
+                  }
+
+                  // Day & Month: True Circular Motion along the Arch
+                  const R = 190;
+                  const angleStep = 0.244; // ~14 deg
+                  const angle = k * angleStep + (isCalDragging ? (calDragOffset / 50) * angleStep * 0.6 : 0);
+                  const x = Math.round(R * Math.sin(angle));
+                  const y = Math.round(R * (1 - Math.cos(angle)));
+                  const rot = (angle * (180 / Math.PI) * 0.65).toFixed(1);
                   const scale = k === 0 ? 1 : Math.max(0.72, 1 - Math.abs(k) * 0.08);
                   const opacity = k === 0 ? 1 : Math.max(0.18, 1 - Math.abs(k) * 0.26);
                   const zIndex = 10 - Math.abs(k);
@@ -1717,7 +1769,7 @@ export default function OrbitApp() {
                       type="button"
                       className={`cal-arc-item ${item.isSelected ? "selected" : ""}`}
                       style={{
-                        transform: `translate(calc(-50% + ${x}px), ${y}px) scale(${scale})`,
+                        transform: `translate(calc(-50% + ${x}px), ${y}px) rotate(${rot}deg) scale(${scale})`,
                         opacity: opacity,
                         zIndex: zIndex,
                         transition: isCalDragging
@@ -1725,7 +1777,7 @@ export default function OrbitApp() {
                           : "transform 0.52s cubic-bezier(0.34, 1.45, 0.64, 1), opacity 0.35s ease"
                       }}
                       onClick={() => {
-                        if (Math.abs(calDragRef.current.deltaX) < 6) {
+                        if (Math.abs(calDragRef.current.currentX - calDragRef.current.startX) < 6) {
                           if (k !== 0) stepCalItem(k);
                         }
                       }}
