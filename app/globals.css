@@ -266,6 +266,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   user-select:none;
   -webkit-user-select:none;
 }
+.sign-deck.dragging .deck-card{
+  transition:transform 0.04s ease-out, opacity 0.08s ease-out;
+}
 .deck-card{
   position:absolute;
   top:0;
@@ -282,13 +285,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   justify-content:center;
   padding:20px 16px;
   text-align:center;
-  transition:transform .4s cubic-bezier(.25,1,.5,1), opacity .4s ease, box-shadow .4s ease, border-color .4s ease;
+  transition:transform 0.56s cubic-bezier(0.34, 1.48, 0.64, 1), opacity 0.45s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.45s ease, border-color 0.45s ease;
   pointer-events:none;
   box-sizing:border-box;
   -webkit-tap-highlight-color:transparent;
   outline:none;
   user-select:none;
   -webkit-user-select:none;
+  will-change:transform, opacity;
 }
 .deck-card.active{
   pointer-events:none;
@@ -318,11 +322,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   object-fit:contain;
   padding:0;
   filter:drop-shadow(0 10px 18px rgba(0,0,0,.55));
-  transition:transform .35s ease, filter .35s ease;
+  transition:transform 0.52s cubic-bezier(0.34, 1.48, 0.64, 1), filter .4s ease;
   pointer-events:none;
   -webkit-user-drag:none;
   user-select:none;
   -webkit-user-select:none;
+  will-change:transform;
 }
 .deck-card.active .deck-card-img{
   transform:scale(1.08);
@@ -385,13 +390,13 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   border-radius:50%;
   background:rgba(255,255,255,.2);
   cursor:pointer;
-  transition:all .25s ease;
+  transition:all 0.5s cubic-bezier(0.34, 1.48, 0.64, 1);
 }
 .deck-dot.active{
   width:18px;
   border-radius:3px;
   background:var(--primary);
-  box-shadow:0 0 8px rgba(252,164,159,.5);
+  box-shadow:0 0 10px rgba(252,164,159,.55);
 }
 
 /* Intake Guided Chat UI */

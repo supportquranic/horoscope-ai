@@ -397,6 +397,8 @@ export default function OrbitApp() {
   const [weekly, setWeekly] = useState({ lastDone: "", answered: false });
 
   const [deckIndex, setDeckIndex] = useState(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const [noteInput, setNoteInput] = useState("");
   const [toast, setToast] = useState({ show: false, text: "" });
   const [isGenerating, setIsGenerating] = useState(false);
@@ -660,6 +662,7 @@ export default function OrbitApp() {
 
   const handleTouchStart = (e) => {
     if (e.touches.length === 1) {
+      setIsDragging(true);
       dragRef.current.startX = e.touches[0].clientX;
       dragRef.current.deltaX = 0;
     }
@@ -667,37 +670,52 @@ export default function OrbitApp() {
 
   const handleTouchMove = (e) => {
     if (e.touches.length === 1) {
-      dragRef.current.deltaX = e.touches[0].clientX - dragRef.current.startX;
+      const dx = e.touches[0].clientX - dragRef.current.startX;
+      dragRef.current.deltaX = dx;
+      const damped = Math.sign(dx) * Math.min(Math.abs(dx), 130);
+      setDragOffset(damped);
     }
   };
 
   const handleTouchEnd = () => {
-    if (dragRef.current.deltaX > 35) {
+    setIsDragging(false);
+    setDragOffset(0);
+    const dx = dragRef.current.deltaX;
+    if (dx > 36) {
       stepDeck(-1);
-    } else if (dragRef.current.deltaX < -35) {
+    } else if (dx < -36) {
       stepDeck(1);
     }
+    dragRef.current.deltaX = 0;
   };
 
   const handleMouseDown = (e) => {
     dragRef.current.isDragging = true;
+    setIsDragging(true);
     dragRef.current.startX = e.clientX;
     dragRef.current.deltaX = 0;
   };
 
   const handleMouseMove = (e) => {
     if (!dragRef.current.isDragging) return;
-    dragRef.current.deltaX = e.clientX - dragRef.current.startX;
+    const dx = e.clientX - dragRef.current.startX;
+    dragRef.current.deltaX = dx;
+    const damped = Math.sign(dx) * Math.min(Math.abs(dx), 130);
+    setDragOffset(damped);
   };
 
   const handleMouseUp = () => {
     if (!dragRef.current.isDragging) return;
     dragRef.current.isDragging = false;
-    if (dragRef.current.deltaX > 40) {
+    setIsDragging(false);
+    setDragOffset(0);
+    const dx = dragRef.current.deltaX;
+    if (dx > 36) {
       stepDeck(-1);
-    } else if (dragRef.current.deltaX < -40) {
+    } else if (dx < -36) {
       stepDeck(1);
     }
+    dragRef.current.deltaX = 0;
   };
 
   const stepDeck = (direction) => {
@@ -1444,12 +1462,13 @@ export default function OrbitApp() {
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
                 onKeyDown={(e) => {
                   if (e.key === "ArrowLeft") { stepDeck(-1); e.preventDefault(); }
                   else if (e.key === "ArrowRight") { stepDeck(1); e.preventDefault(); }
                 }}
               >
-                <div className="sign-deck">
+                <div className={`sign-deck ${isDragging ? "dragging" : ""}`}>
                   {SIGNS.map((s, idx) => {
                     const total = SIGNS.length;
                     let diff = idx - deckIndex;
@@ -1463,17 +1482,28 @@ export default function OrbitApp() {
                     let isAdj = Math.abs(diff) === 1;
 
                     if (diff === 0) {
-                      transform = "translate3d(0, 0, 0) scale(1)";
+                      const x = dragOffset * 0.88;
+                      const rot = dragOffset * 0.04;
+                      const sc = 1 - Math.abs(dragOffset) * 0.0006;
+                      transform = `translate3d(${x}px, 0, 0) scale(${sc}) rotate(${rot}deg)`;
                       opacity = "1";
                       zIndex = "10";
-                    } else if (Math.abs(diff) === 1) {
-                      const x = diff * 92;
-                      const rot = diff * -12;
-                      transform = `translate3d(${x}px, 0, -45px) scale(0.86) rotateY(${rot}deg)`;
-                      opacity = "0.75";
+                    } else if (diff === 1) {
+                      const x = 92 + dragOffset * 0.7;
+                      const rot = -12 + dragOffset * 0.04;
+                      const sc = 0.86 + (dragOffset < 0 ? Math.abs(dragOffset) * 0.0009 : 0);
+                      transform = `translate3d(${x}px, 0, -45px) scale(${sc}) rotateY(${rot}deg)`;
+                      opacity = `${Math.min(1, 0.75 + (dragOffset < 0 ? Math.abs(dragOffset) * 0.002 : 0))}`;
+                      zIndex = "8";
+                    } else if (diff === -1) {
+                      const x = -92 + dragOffset * 0.7;
+                      const rot = 12 + dragOffset * 0.04;
+                      const sc = 0.86 + (dragOffset > 0 ? Math.abs(dragOffset) * 0.0009 : 0);
+                      transform = `translate3d(${x}px, 0, -45px) scale(${sc}) rotateY(${rot}deg)`;
+                      opacity = `${Math.min(1, 0.75 + (dragOffset > 0 ? Math.abs(dragOffset) * 0.002 : 0))}`;
                       zIndex = "8";
                     } else if (Math.abs(diff) === 2) {
-                      const x2 = diff * 138;
+                      const x2 = diff * 138 + dragOffset * 0.45;
                       const rot2 = diff * -20;
                       transform = `translate3d(${x2}px, 0, -95px) scale(0.72) rotateY(${rot2}deg)`;
                       opacity = "0.35";
