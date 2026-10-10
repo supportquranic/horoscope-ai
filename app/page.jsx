@@ -752,9 +752,11 @@ export default function OrbitApp() {
   };
 
   // Generate Reading (with Gemini if available, fallback to template)
-  const triggerGenerate = async (forceRefresh = false) => {
+  const triggerGenerate = async (forceRefresh = true) => {
     if (isGenerating) return;
     setIsGenerating(true);
+
+    const shouldForce = typeof forceRefresh === 'boolean' ? forceRefresh : true;
 
     try {
       const res = await fetch('/api/gemini/reading', {
@@ -763,16 +765,16 @@ export default function OrbitApp() {
         body: JSON.stringify({
           userData: { ...intake, today: checkin },
           sign: profile.sign || SIGNS[deckIndex].n,
-          forceRefresh
+          forceRefresh: shouldForce
         })
       });
       const data = await res.json();
       if (data.success && data.reading) {
         setAiReading(data.reading);
-        showSnack(data.cached ? "Loaded from today's saved reading" : "Gemini personalized reading generated");
+        showSnack(data.cached ? "Loaded from today's saved reading" : "✨ Gemini AI reading generated");
       } else {
         setAiReading(null);
-        showSnack("Template reading generated");
+        showSnack(data.reason ? `Template reading (${data.reason})` : "Template reading generated");
       }
     } catch (err) {
       setAiReading(null);
@@ -1640,7 +1642,7 @@ export default function OrbitApp() {
 
             {/* Reading Action Bar */}
             <div className="reading-action-bar">
-              <button className="btn filled" onClick={triggerGenerate} disabled={isGenerating}>
+              <button className="btn filled" onClick={() => triggerGenerate(true)} disabled={isGenerating}>
                 <span className="ms" aria-hidden="true">auto_awesome</span>
                 <span>{isGenerating ? "Reflecting…" : "Generate fresh reading"}</span>
               </button>

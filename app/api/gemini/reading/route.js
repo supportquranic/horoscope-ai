@@ -98,14 +98,30 @@ Respond strictly with valid JSON with this exact schema:
   }
 }`;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash',
-        contents: prompt,
-        config: {
-          systemInstruction: SYSTEM_PROMPT,
-          responseMimeType: 'application/json',
-        },
-      });
+      const CANDIDATE_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash'];
+      let response = null;
+      let lastErr = null;
+
+      for (const modelName of CANDIDATE_MODELS) {
+        try {
+          response = await ai.models.generateContent({
+            model: modelName,
+            contents: prompt,
+            config: {
+              systemInstruction: SYSTEM_PROMPT,
+              responseMimeType: 'application/json',
+            },
+          });
+          if (response && response.text) break;
+        } catch (modelErr) {
+          lastErr = modelErr;
+          console.warn(`Model ${modelName} failed, trying next candidate:`, modelErr.message);
+        }
+      }
+
+      if (!response && lastErr) {
+        throw lastErr;
+      }
 
       if (response && response.text) {
         const parsed = JSON.parse(response.text);
