@@ -765,12 +765,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   border-radius: 50%;
 }
 
-/* Tabs Bar */
+/* Tabs Bar (Centered without top icon) */
 .cal-tabs-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: center;
   margin-bottom: 20px;
   width: 100%;
 }
@@ -808,31 +807,6 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   color: #0d1334;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.24);
   font-weight: 700;
-}
-
-.cal-icon-action {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #ffffff;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
-}
-
-.cal-icon-action:hover {
-  background: rgba(255, 255, 255, 0.16);
-  transform: scale(1.05);
-}
-
-.cal-icon-action .ms {
-  font-size: 20px;
-  width: 20px;
-  height: 20px;
 }
 
 /* Big Typography Header */
@@ -981,6 +955,24 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   box-shadow: none !important; /* No glow */
   color: #ffffff;
   font-weight: 700;
+}
+
+/* Empty Divider Slot between months */
+.cal-arc-empty-slot {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.cal-empty-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  margin-top: 26px;
+  transition: all 0.2s ease;
+}
+.cal-arc-empty-slot:hover .cal-empty-dot {
+  background: rgba(255, 255, 255, 0.6);
+  transform: scale(1.4);
 }
 
 /* Straight Underline for Year Tab */

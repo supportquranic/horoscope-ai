@@ -404,6 +404,72 @@ function getRolledDate(baseYear, baseMonth, baseDay, offsetDays) {
   };
 }
 
+function getDaySlot(year, month, day, k) {
+  const maxDays = new Date(year, month, 0).getDate();
+  if (k === 0) {
+    const dObj = new Date(year, month - 1, day);
+    return { type: 'day', year, month, day, weekday: WEEKDAY_NAMES[dObj.getDay()] };
+  }
+  if (k > 0) {
+    const remainingInMonth = maxDays - day;
+    if (k <= remainingInMonth) {
+      const targetDay = day + k;
+      const dObj = new Date(year, month - 1, targetDay);
+      return { type: 'day', year, month, day: targetDay, weekday: WEEKDAY_NAMES[dObj.getDay()] };
+    }
+    if (k === remainingInMonth + 1) {
+      return { type: 'empty' };
+    }
+    const offsetInNext = k - remainingInMonth - 1;
+    const nextDate = new Date(year, month, offsetInNext);
+    return {
+      type: 'day',
+      year: nextDate.getFullYear(),
+      month: nextDate.getMonth() + 1,
+      day: nextDate.getDate(),
+      weekday: WEEKDAY_NAMES[nextDate.getDay()]
+    };
+  }
+  // k < 0
+  const absK = Math.abs(k);
+  if (absK < day) {
+    const targetDay = day + k;
+    const dObj = new Date(year, month - 1, targetDay);
+    return { type: 'day', year, month, day: targetDay, weekday: WEEKDAY_NAMES[dObj.getDay()] };
+  }
+  if (absK === day) {
+    return { type: 'empty' };
+  }
+  const offsetInPrev = absK - day - 1;
+  const prevMonthLastDate = new Date(year, month - 1, 0);
+  const targetDay = prevMonthLastDate.getDate() - offsetInPrev;
+  const prevDate = new Date(prevMonthLastDate.getFullYear(), prevMonthLastDate.getMonth(), targetDay);
+  return {
+    type: 'day',
+    year: prevDate.getFullYear(),
+    month: prevDate.getMonth() + 1,
+    day: prevDate.getDate(),
+    weekday: WEEKDAY_NAMES[prevDate.getDay()]
+  };
+}
+
+function getMonthSlot(month, k) {
+  if (k === 0) return { type: 'month', month };
+  if (k > 0) {
+    const remainingInYear = 12 - month;
+    if (k <= remainingInYear) return { type: 'month', month: month + k };
+    if (k === remainingInYear + 1) return { type: 'empty' };
+    const offset = k - remainingInYear - 1;
+    return { type: 'month', month: offset };
+  }
+  // k < 0
+  const absK = Math.abs(k);
+  if (absK < month) return { type: 'month', month: month + k };
+  if (absK === month) return { type: 'empty' };
+  const offset = absK - month - 1;
+  return { type: 'month', month: 12 - offset };
+}
+
 function hour(r) {
   const h = Math.floor(r() * 12) + 1;
   const m = Math.floor(r() * 12) * 5;
@@ -819,7 +885,7 @@ export default function OrbitApp() {
     const x = e.touches[0].clientX;
     calDragRef.current.currentX = x;
     const dx = x - calDragRef.current.startX;
-    const damped = Math.sign(dx) * Math.min(Math.abs(dx), 90);
+    const damped = Math.sign(dx) * Math.min(Math.abs(dx), 110);
     setCalDragOffset(damped);
   };
 
@@ -829,9 +895,12 @@ export default function OrbitApp() {
     setIsCalDragging(false);
     setCalDragOffset(0);
     const dx = calDragRef.current.currentX - calDragRef.current.startX;
-    if (dx > 20) {
+    const stepCount = Math.round(dx / 44);
+    if (stepCount !== 0) {
+      stepCalItem(-stepCount);
+    } else if (dx > 16) {
       stepCalItem(-1);
-    } else if (dx < -20) {
+    } else if (dx < -16) {
       stepCalItem(1);
     }
     calDragRef.current.startX = 0;
@@ -850,7 +919,7 @@ export default function OrbitApp() {
     const x = e.clientX;
     calDragRef.current.currentX = x;
     const dx = x - calDragRef.current.startX;
-    const damped = Math.sign(dx) * Math.min(Math.abs(dx), 90);
+    const damped = Math.sign(dx) * Math.min(Math.abs(dx), 110);
     setCalDragOffset(damped);
   };
 
@@ -860,9 +929,12 @@ export default function OrbitApp() {
     setIsCalDragging(false);
     setCalDragOffset(0);
     const dx = calDragRef.current.currentX - calDragRef.current.startX;
-    if (dx > 20) {
+    const stepCount = Math.round(dx / 44);
+    if (stepCount !== 0) {
+      stepCalItem(-stepCount);
+    } else if (dx > 16) {
       stepCalItem(-1);
-    } else if (dx < -20) {
+    } else if (dx < -16) {
       stepCalItem(1);
     }
     calDragRef.current.startX = 0;
@@ -873,13 +945,25 @@ export default function OrbitApp() {
     if (calendarTab === "day") {
       const offsets = [-3, -2, -1, 0, 1, 2, 3];
       return offsets.map((k) => {
-        const rolled = getRolledDate(currentBirthParts.year, currentBirthParts.month, currentBirthParts.day, k);
+        const slot = getDaySlot(currentBirthParts.year, currentBirthParts.month, currentBirthParts.day, k);
+        if (slot.type === 'empty') {
+          return {
+            k,
+            isEmpty: true,
+            val: `empty-${k}`,
+            top: "",
+            bottom: "",
+            isSelected: false,
+            isYear: false
+          };
+        }
         return {
           k,
-          val: `${rolled.year}-${rolled.month}-${rolled.day}`,
-          rolled,
-          top: rolled.weekday,
-          bottom: String(rolled.day),
+          isEmpty: false,
+          val: `${slot.year}-${slot.month}-${slot.day}`,
+          slot,
+          top: slot.weekday,
+          bottom: String(slot.day),
           isSelected: k === 0,
           isYear: false
         };
@@ -889,9 +973,22 @@ export default function OrbitApp() {
     if (calendarTab === "month") {
       const offsets = [-3, -2, -1, 0, 1, 2, 3];
       return offsets.map((k) => {
-        const m = ((currentBirthParts.month - 1 + k) % 12 + 12) % 12 + 1;
+        const slot = getMonthSlot(currentBirthParts.month, k);
+        if (slot.type === 'empty') {
+          return {
+            k,
+            isEmpty: true,
+            val: `empty-${k}`,
+            top: "",
+            bottom: "",
+            isSelected: false,
+            isYear: false
+          };
+        }
+        const m = slot.month;
         return {
           k,
+          isEmpty: false,
           val: m,
           top: String(m).padStart(2, "0"),
           bottom: MONTH_NAMES[m - 1].slice(0, 3),
@@ -908,6 +1005,7 @@ export default function OrbitApp() {
       if (y < 1930 || y > 2026) return { k, hidden: true, isYear: true };
       return {
         k,
+        isEmpty: false,
         val: y,
         top: `'${String(y).slice(-2)}`,
         bottom: String(y),
@@ -1633,7 +1731,7 @@ export default function OrbitApp() {
               {/* Hidden input to maintain DOM compatibility */}
               <input type="hidden" id="birth" name="birth" value={profile.birth || ""} />
 
-              {/* Top Segmented Tabs: 3 Tabs (Day, Month, Year) + Today Action Button */}
+              {/* Top Segmented Tabs: 3 Tabs (Day, Month, Year) */}
               <div className="cal-tabs-bar">
                 <div className="cal-tabs-track" role="tablist" aria-label="Date selector tabs">
                   <button
@@ -1664,16 +1762,6 @@ export default function OrbitApp() {
                     Year
                   </button>
                 </div>
-
-                <button
-                  type="button"
-                  className="cal-icon-action"
-                  title="Jump to today"
-                  aria-label="Jump to today"
-                  onClick={handleJumpToToday}
-                >
-                  <span className="ms" aria-hidden="true">event</span>
-                </button>
               </div>
 
               {/* Big Typography Display: Month on Left, Day on Right (Exact reference match!) */}
@@ -1691,7 +1779,7 @@ export default function OrbitApp() {
                 </div>
               </div>
 
-              {/* Unified Arched Reel Stage (Circular motion for Day/Month, Straight line with Pills for Year) */}
+              {/* Reel Stage (Upright circular flow for Day/Month, Straight line with Pills for Year) */}
               <div
                 className="cal-arc-stage"
                 role="region"
@@ -1704,21 +1792,43 @@ export default function OrbitApp() {
                 onMouseUp={handleCalMouseUp}
                 onMouseLeave={handleCalMouseUp}
               >
-                {/* Underline: Curved Arch for Day/Month, Straight Line for Year */}
-                {calendarTab === "year" ? (
+                {/* Straight subtle baseline for Year only; Curved line removed as requested */}
+                {calendarTab === "year" && (
                   <div className="cal-straight-line" aria-hidden="true" />
-                ) : (
-                  <div className="cal-arc-bg" aria-hidden="true">
-                    <svg viewBox="0 0 340 54" preserveAspectRatio="none" className="cal-arc-svg">
-                      <path d="M 24,50 Q 170,10 316,50" fill="none" stroke="rgba(255, 255, 255, 0.22)" strokeWidth="1.5" />
-                    </svg>
-                  </div>
                 )}
 
                 {/* Items */}
                 {getArchItems().map((item) => {
                   if (item.hidden) return null;
                   const k = item.k;
+
+                  if (item.isEmpty) {
+                    const R = 190;
+                    const angleStep = 0.244;
+                    const angle = k * angleStep + (isCalDragging ? (calDragOffset / 50) * angleStep * 0.6 : 0);
+                    const x = Math.round(R * Math.sin(angle));
+                    const y = Math.round(R * (1 - Math.cos(angle)));
+                    const scale = 0.8;
+                    const opacity = Math.max(0.18, 1 - Math.abs(k) * 0.26);
+
+                    return (
+                      <div
+                        key={`empty-${k}`}
+                        className="cal-arc-item cal-arc-empty-slot"
+                        style={{
+                          transform: `translate(calc(-50% + ${x}px), ${y}px) scale(${scale})`,
+                          opacity: opacity,
+                          zIndex: 5,
+                          transition: isCalDragging
+                            ? "none"
+                            : "transform 0.52s cubic-bezier(0.34, 1.45, 0.64, 1), opacity 0.35s ease"
+                        }}
+                        aria-hidden="true"
+                      >
+                        <div className="cal-empty-dot" />
+                      </div>
+                    );
+                  }
 
                   if (item.isYear) {
                     // Straight horizontal rail layout with pills (No circle!)
@@ -1752,13 +1862,12 @@ export default function OrbitApp() {
                     );
                   }
 
-                  // Day & Month: True Circular Motion along the Arch
+                  // Day & Month: Exact upright angle (no slanting) along circular path
                   const R = 190;
                   const angleStep = 0.244; // ~14 deg
                   const angle = k * angleStep + (isCalDragging ? (calDragOffset / 50) * angleStep * 0.6 : 0);
                   const x = Math.round(R * Math.sin(angle));
                   const y = Math.round(R * (1 - Math.cos(angle)));
-                  const rot = (angle * (180 / Math.PI) * 0.65).toFixed(1);
                   const scale = k === 0 ? 1 : Math.max(0.72, 1 - Math.abs(k) * 0.08);
                   const opacity = k === 0 ? 1 : Math.max(0.18, 1 - Math.abs(k) * 0.26);
                   const zIndex = 10 - Math.abs(k);
@@ -1769,7 +1878,7 @@ export default function OrbitApp() {
                       type="button"
                       className={`cal-arc-item ${item.isSelected ? "selected" : ""}`}
                       style={{
-                        transform: `translate(calc(-50% + ${x}px), ${y}px) rotate(${rot}deg) scale(${scale})`,
+                        transform: `translate(calc(-50% + ${x}px), ${y}px) scale(${scale})`,
                         opacity: opacity,
                         zIndex: zIndex,
                         transition: isCalDragging
@@ -1778,7 +1887,15 @@ export default function OrbitApp() {
                       }}
                       onClick={() => {
                         if (Math.abs(calDragRef.current.currentX - calDragRef.current.startX) < 6) {
-                          if (k !== 0) stepCalItem(k);
+                          if (item.slot) {
+                            if (calendarTab === "day") {
+                              updateBirthDate(item.slot.year, item.slot.month, item.slot.day);
+                            } else if (calendarTab === "month") {
+                              updateBirthDate(currentBirthParts.year, item.slot.month, currentBirthParts.day);
+                            }
+                          } else if (k !== 0) {
+                            stepCalItem(k);
+                          }
                         }
                       }}
                       aria-label={`Select ${calendarTab} ${item.bottom}`}
