@@ -496,6 +496,35 @@ export default function OrbitApp() {
   const [checkin, setCheckin] = useState({ energy: "Okay", mood: "Good", mainTask: "", date: "" });
   const [weekly, setWeekly] = useState({ lastDone: "", answered: false });
 
+  // Splash & Onboarding states
+  const [splashLoading, setSplashLoading] = useState(true);
+  const [splashText, setSplashText] = useState("");
+  const [account, setAccount] = useState(null);
+  const [authMode, setAuthMode] = useState("signup"); // "signup" | "login"
+  const [authForm, setAuthForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
+    birthDate: "2000-08-23"
+  });
+
+  // Compatibility (Synastry) states
+  const [partnerName, setPartnerName] = useState("Partner");
+  const [partnerSign, setPartnerSign] = useState("Taurus");
+  const [compatResult, setCompatResult] = useState(null);
+  const [isCompatLoading, setIsCompatLoading] = useState(false);
+
+  // AI Astrologer Chat states
+  const [aiChatMessages, setAiChatMessages] = useState([
+    {
+      role: "astrologer",
+      text: "Greetings, traveler of the cosmos. I am the Orbit Astrologer. What question or reflection does your spirit seek guidance on today?"
+    }
+  ]);
+  const [aiChatInput, setAiChatInput] = useState("");
+  const [isAiChatLoading, setIsAiChatLoading] = useState(false);
+
   // Profile Calendar Widget state
   const [calendarTab, setCalendarTab] = useState("day"); // "day" | "month" | "year"
   const calDragRef = useRef({ startX: 0, deltaX: 0, isDragging: false });
@@ -529,6 +558,29 @@ export default function OrbitApp() {
     }, 2800);
   }, []);
 
+  // Typing animation for splash screen
+  useEffect(() => {
+    const fullText = "ORBIT";
+    let cur = 0;
+    const interval = setInterval(() => {
+      cur++;
+      setSplashText(fullText.slice(0, cur));
+      if (cur >= fullText.length) {
+        clearInterval(interval);
+        setTimeout(() => {
+          setSplashLoading(false);
+          const savedAcc = loadLocal("orbit_account", null);
+          if (!savedAcc) {
+            setView("onboarding");
+          } else {
+            setView("home");
+          }
+        }, 750);
+      }
+    }, 130);
+    return () => clearInterval(interval);
+  }, []);
+
   // Hydrate from localStorage on client mount
   useEffect(() => {
     const loadedProf = loadLocal(K.profile, { birth: "", sign: "", goals: "", situation: "" });
@@ -537,12 +589,24 @@ export default function OrbitApp() {
     const loadedState = loadLocal(K.state, { variant: 0, actionDate: "", actionVariant: 0, actionDone: false });
     const loadedCheckin = loadLocal(K.checkin, { energy: "Okay", mood: "Good", mainTask: "", date: "" });
     const loadedWeekly = loadLocal(K.weekly, { lastDone: "", answered: false });
+    const loadedAccount = loadLocal("orbit_account", null);
 
     setProfile(loadedProf);
     setNotes(loadedNotes);
     setState(loadedState);
     setCheckin(loadedCheckin);
     setWeekly(loadedWeekly);
+
+    if (loadedAccount) {
+      setAccount(loadedAccount);
+      setAuthForm({
+        name: loadedAccount.name || "",
+        email: loadedAccount.email || "",
+        password: loadedAccount.password || "",
+        phone: loadedAccount.phone || "",
+        birthDate: loadedAccount.birthDate || "2000-08-23"
+      });
+    }
 
     if (loadedIntake) {
       setIntake(loadedIntake);
@@ -856,6 +920,7 @@ export default function OrbitApp() {
       if (idx !== -1) setDeckIndex(idx);
     }
     setProfile(newProf);
+    setAuthForm((prev) => ({ ...prev, birthDate: dateStr }));
   };
 
   const stepCalItem = (direction) => {
@@ -1031,7 +1096,220 @@ export default function OrbitApp() {
       if (idx !== -1) setDeckIndex(idx);
     }
     setProfile(newProf);
+    setAuthForm((prev) => ({ ...prev, birthDate: val }));
   };
+
+  // Reusable Calendar Widget with 3 Tabs (Day, Month, Year), Big Typography & Curved Flow
+  const renderCalendarWidget = () => (
+    <div className="profile-calendar-widget" role="region" aria-label="Birth date selector">
+      <input type="hidden" id="birth" name="birth" value={profile.birth || authForm.birthDate || ""} />
+
+      {/* Top Segmented Tabs: 3 Tabs (Day, Month, Year) */}
+      <div className="cal-tabs-bar">
+        <div className="cal-tabs-track" role="tablist" aria-label="Date selector tabs">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={calendarTab === "day"}
+            className={`cal-tab-btn ${calendarTab === "day" ? "active" : ""}`}
+            onClick={() => setCalendarTab("day")}
+          >
+            Day
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={calendarTab === "month"}
+            className={`cal-tab-btn ${calendarTab === "month" ? "active" : ""}`}
+            onClick={() => setCalendarTab("month")}
+          >
+            Month
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={calendarTab === "year"}
+            className={`cal-tab-btn ${calendarTab === "year" ? "active" : ""}`}
+            onClick={() => setCalendarTab("year")}
+          >
+            Year
+          </button>
+        </div>
+      </div>
+
+      {/* Big Typography Display: Month on Left, Day on Right */}
+      <div className="cal-big-header">
+        <div className="cal-big-month-col">
+          <span className="cal-big-month">
+            {MONTH_NAMES[currentBirthParts.month - 1]}
+          </span>
+          <span className="cal-big-sub">
+            {currentBirthParts.year} · {detectedSignInfo.n} {detectedSignInfo.s}&#xFE0E;
+          </span>
+        </div>
+        <div className="cal-big-day">
+          {currentBirthParts.day}
+        </div>
+      </div>
+
+      {/* Reel Stage */}
+      <div
+        className="cal-arc-stage"
+        role="region"
+        aria-label={`Select ${calendarTab}`}
+        onTouchStart={handleCalTouchStart}
+        onTouchMove={handleCalTouchMove}
+        onTouchEnd={handleCalTouchEnd}
+        onMouseDown={handleCalMouseDown}
+        onMouseMove={handleCalMouseMove}
+        onMouseUp={handleCalMouseUp}
+        onMouseLeave={handleCalMouseUp}
+      >
+        {calendarTab === "year" && (
+          <div className="cal-straight-line" aria-hidden="true" />
+        )}
+
+        {getArchItems().map((item) => {
+          if (item.hidden) return null;
+          const k = item.k;
+
+          if (item.isEmpty) {
+            const R = 190;
+            const angleStep = 0.244;
+            const angle = k * angleStep + (isCalDragging ? (calDragOffset / 50) * angleStep * 0.6 : 0);
+            const x = Math.round(R * Math.sin(angle));
+            const y = Math.round(R * (1 - Math.cos(angle)));
+            const scale = 0.8;
+            const opacity = Math.max(0.18, 1 - Math.abs(k) * 0.26);
+
+            return (
+              <div
+                key={`empty-${k}`}
+                className="cal-arc-item cal-arc-empty-slot"
+                style={{
+                  transform: `translate(calc(-50% + ${x}px), ${y}px) scale(${scale})`,
+                  opacity: opacity,
+                  zIndex: 5,
+                  transition: isCalDragging
+                    ? "none"
+                    : "transform 0.52s cubic-bezier(0.34, 1.45, 0.64, 1), opacity 0.35s ease"
+                }}
+                aria-hidden="true"
+              >
+                <div className="cal-empty-dot" />
+              </div>
+            );
+          }
+
+          if (item.isYear) {
+            const x = k * 74 + (isCalDragging ? calDragOffset * 0.5 : 0);
+            const scale = k === 0 ? 1 : 0.88;
+            const opacity = k === 0 ? 1 : Math.max(0.28, 1 - Math.abs(k) * 0.35);
+            const zIndex = 10 - Math.abs(k);
+
+            return (
+              <button
+                key={`${calendarTab}-${item.val}`}
+                type="button"
+                className={`cal-year-pill-item ${item.isSelected ? "selected" : ""}`}
+                style={{
+                  transform: `translate(calc(-50% + ${x}px), 0px) scale(${scale})`,
+                  opacity: opacity,
+                  zIndex: zIndex,
+                  transition: isCalDragging
+                    ? "none"
+                    : "transform 0.32s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s ease"
+                }}
+                onClick={() => {
+                  if (Math.abs(calDragRef.current.currentX - calDragRef.current.startX) < 6) {
+                    if (k !== 0) stepCalItem(k);
+                  }
+                }}
+                aria-label={`Select year ${item.bottom}`}
+              >
+                {item.bottom}
+              </button>
+            );
+          }
+
+          const R = 190;
+          const angleStep = 0.244;
+          const angle = k * angleStep + (isCalDragging ? (calDragOffset / 50) * angleStep * 0.6 : 0);
+          const x = Math.round(R * Math.sin(angle));
+          const y = Math.round(R * (1 - Math.cos(angle)));
+          const scale = k === 0 ? 1 : Math.max(0.72, 1 - Math.abs(k) * 0.08);
+          const opacity = k === 0 ? 1 : Math.max(0.18, 1 - Math.abs(k) * 0.26);
+          const zIndex = 10 - Math.abs(k);
+
+          return (
+            <button
+              key={`${calendarTab}-${item.val}`}
+              type="button"
+              className={`cal-arc-item ${item.isSelected ? "selected" : ""}`}
+              style={{
+                transform: `translate(calc(-50% + ${x}px), ${y}px) scale(${scale})`,
+                opacity: opacity,
+                zIndex: zIndex,
+                transition: isCalDragging
+                  ? "none"
+                  : "transform 0.52s cubic-bezier(0.34, 1.45, 0.64, 1), opacity 0.35s ease"
+              }}
+              onClick={() => {
+                if (Math.abs(calDragRef.current.currentX - calDragRef.current.startX) < 6) {
+                  if (item.slot) {
+                    if (calendarTab === "day") {
+                      updateBirthDate(item.slot.year, item.slot.month, item.slot.day);
+                    } else if (calendarTab === "month") {
+                      updateBirthDate(currentBirthParts.year, item.slot.month, currentBirthParts.day);
+                    }
+                  } else {
+                    if (k !== 0) stepCalItem(k);
+                  }
+                }
+              }}
+              aria-label={calendarTab === "day" ? `Select day ${item.bottom}` : `Select month ${item.bottom}`}
+            >
+              <span className="cal-arc-top">{item.top}</span>
+              <span className="cal-arc-bottom">{item.bottom}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Bottom Controls */}
+      <div className="cal-bottom-bar">
+        <button
+          type="button"
+          className="cal-step-btn"
+          onClick={() => stepCalItem(-1)}
+          aria-label={`Previous ${calendarTab}`}
+        >
+          <span className="ms" aria-hidden="true">chevron_left</span>
+        </button>
+        <button
+          type="button"
+          className="cal-today-pill"
+          onClick={handleJumpToToday}
+        >
+          Today
+        </button>
+        <button
+          type="button"
+          className="cal-step-btn"
+          onClick={() => stepCalItem(1)}
+          aria-label={`Next ${calendarTab}`}
+        >
+          <span className="ms" aria-hidden="true">chevron_right</span>
+        </button>
+      </div>
+
+      {/* Astro Sign Pill Notification */}
+      <div className="cal-sign-badge">
+        <span className="ms fill" style={{ fontSize: "16px", color: "#93c5fd" }} aria-hidden="true">stars</span>
+        <span>Zodiac Sign: <b>{detectedSignInfo.n}</b> ({detectedSignInfo.e} · {detectedSignInfo.p})</span>
+      </div>
+    </div>
+  );
 
   const saveProfileHandler = (andRead = false) => {
     let signToSave = profile.sign || SIGNS[deckIndex].n;
@@ -1330,6 +1608,176 @@ export default function OrbitApp() {
     }
   };
 
+  // Onboarding & Account Handlers
+  const handleCreateAccount = (e) => {
+    if (e) e.preventDefault();
+    if (!authForm.name.trim()) {
+      showSnack("Please enter your name");
+      return;
+    }
+    if (!authForm.email.trim() || !authForm.email.includes("@")) {
+      showSnack("Please enter a valid email address");
+      return;
+    }
+    if (!authForm.password.trim() || authForm.password.length < 4) {
+      showSnack("Please enter a password (min 4 characters)");
+      return;
+    }
+
+    const birthDate = authForm.birthDate || profile.birth || "2000-08-23";
+    const detectedSign = signFromDate(birthDate) || "Leo";
+    const newAccount = {
+      name: authForm.name.trim(),
+      email: authForm.email.trim(),
+      phone: authForm.phone.trim(),
+      password: authForm.password,
+      birthDate,
+      sign: detectedSign,
+      createdAt: new Date().toISOString()
+    };
+
+    setAccount(newAccount);
+    saveLocal("orbit_account", newAccount);
+
+    // Update profile and intake
+    const updatedProf = {
+      ...profile,
+      birth: birthDate,
+      sign: detectedSign
+    };
+    setProfile(updatedProf);
+    saveLocal(K.profile, updatedProf);
+
+    const updatedIntake = {
+      ...intake,
+      name: newAccount.name,
+      birthDate
+    };
+    setIntake(updatedIntake);
+    saveLocal(K.intake, updatedIntake);
+
+    const idx = SIGNS.findIndex((s) => s.n === detectedSign);
+    if (idx !== -1) setDeckIndex(idx);
+
+    showSnack(`Welcome to Orbit, ${newAccount.name}!`);
+    changeView("home");
+  };
+
+  const handleLogin = (e) => {
+    if (e) e.preventDefault();
+    if (!authForm.email.trim()) {
+      showSnack("Please enter your email");
+      return;
+    }
+    const saved = loadLocal("orbit_account", null);
+    if (saved && saved.email === authForm.email.trim()) {
+      setAccount(saved);
+      showSnack(`Welcome back, ${saved.name}!`);
+      changeView("home");
+    } else {
+      const defaultName = authForm.name || authForm.email.split("@")[0] || "Seeker";
+      const newAcc = {
+        name: defaultName,
+        email: authForm.email.trim(),
+        phone: authForm.phone.trim(),
+        birthDate: profile.birth || "2000-08-23",
+        sign: profile.sign || "Leo"
+      };
+      setAccount(newAcc);
+      saveLocal("orbit_account", newAcc);
+      showSnack(`Welcome back, ${defaultName}!`);
+      changeView("home");
+    }
+  };
+
+  const handleLogout = () => {
+    setAccount(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("orbit_account");
+    }
+    showSnack("Signed out successfully");
+    changeView("onboarding");
+  };
+
+  // Compatibility (Synastry) Handler
+  const handleAnalyzeCompatibility = async () => {
+    if (isCompatLoading) return;
+    setIsCompatLoading(true);
+    try {
+      const res = await fetch('/api/gemini/compatibility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          person1: {
+            name: intake.name || account?.name || "You",
+            sign: profile.sign || SIGNS[deckIndex].n,
+            birthDate: profile.birth || authForm.birthDate
+          },
+          person2: {
+            name: partnerName || "Partner",
+            sign: partnerSign
+          }
+        })
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        setCompatResult(data);
+        showSnack("Synastry alignment calculated");
+      } else {
+        showSnack("Could not calculate compatibility");
+      }
+    } catch (err) {
+      showSnack("Failed to calculate compatibility");
+    } finally {
+      setIsCompatLoading(false);
+    }
+  };
+
+  // AI Astrologer Chat Handler
+  const handleSendChatMessage = async (presetText = null) => {
+    const messageToSend = (presetText || aiChatInput).trim();
+    if (!messageToSend || isAiChatLoading) return;
+
+    const userMsg = { role: "user", text: messageToSend };
+    const updatedMessages = [...aiChatMessages, userMsg];
+    setAiChatMessages(updatedMessages);
+    setAiChatInput("");
+    setIsAiChatLoading(true);
+
+    try {
+      const res = await fetch('/api/gemini/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: messageToSend,
+          history: updatedMessages,
+          sign: profile.sign || SIGNS[deckIndex].n,
+          userData: {
+            name: intake.name || account?.name || "Friend",
+            focus: intake.focus,
+            goal: intake.goal || profile.goals
+          }
+        })
+      });
+      const data = await res.json();
+      if (data && data.reply) {
+        setAiChatMessages((prev) => [...prev, { role: "astrologer", text: data.reply }]);
+      } else {
+        setAiChatMessages((prev) => [
+          ...prev,
+          { role: "astrologer", text: "The planetary transits invite quiet reflection. Focus on your inner calm today." }
+        ]);
+      }
+    } catch (err) {
+      setAiChatMessages((prev) => [
+        ...prev,
+        { role: "astrologer", text: "The stars are quiet at this moment. Please ask again in a moment." }
+      ]);
+    } finally {
+      setIsAiChatLoading(false);
+    }
+  };
+
   // Sign hint calculation
   const autoSign = signFromDate(profile.birth || intake.birthDate);
   let signHint = "";
@@ -1343,31 +1791,177 @@ export default function OrbitApp() {
 
   return (
     <>
+      {/* 1. FULL SCREEN SPLASH / LOADING SCREEN (Text Typing Animation) */}
+      <div className={`splash-screen ${!splashLoading ? "hidden" : ""}`}>
+        <div className="splash-title-box">
+          <span className="splash-logo-text">{splashText}</span>
+          <span className="splash-typing-cursor" />
+        </div>
+        <div className="splash-sub">Cosmic Alignment & Guidance</div>
+        <div className="splash-spinner" />
+      </div>
+
+      {/* 2. APP BAR (Clean Text-Only Logo) */}
       <div className="bar">
-        <div className="logo"><span className="ms fill" aria-hidden="true">brightness_2</span></div>
-        <h1>Orbit</h1>
+        <div className="logo-text">
+          ORBIT <span className="logo-dot" />
+        </div>
         <span className="date">{todayLabel}</span>
       </div>
 
-      <nav className="nav" id="nav">
-        <button className={view === "home" ? "active" : ""} onClick={() => changeView("home")}>
-          <span className="pill"><span className="ms" aria-hidden="true">home</span></span>Home
+      {/* 3. BOTTOM FLOATING PILL NAVBAR (Profile is Strictly LAST!) */}
+      {view !== "onboarding" && (
+        <nav className="nav" id="nav">
+          <button className={view === "home" ? "active" : ""} onClick={() => changeView("home")}>
+            <span className="pill"><span className="ms" aria-hidden="true">home</span></span>Home
+          </button>
+          <button className={view === "reading" ? "active" : ""} onClick={() => changeView("reading")}>
+            <span className="pill"><span className="ms" aria-hidden="true">auto_awesome</span></span>Reading
+          </button>
+          <button className={view === "compatibility" ? "active" : ""} onClick={() => changeView("compatibility")}>
+            <span className="pill"><span className="ms" aria-hidden="true">favorite</span></span>Match
+          </button>
+          <button className={view === "chat" ? "active" : ""} onClick={() => changeView("chat")}>
+            <span className="pill"><span className="ms" aria-hidden="true">forum</span></span>Ask AI
+          </button>
+          <button className={view === "profile" ? "active" : ""} onClick={() => changeView("profile")}>
+            <span className="pill"><span className="ms" aria-hidden="true">person</span></span>Profile
+          </button>
+        </nav>
+      )}
+
+      {/* 4. FLOATING AI ASTROLOGER QUICK TRIGGER */}
+      {view !== "chat" && view !== "onboarding" && (
+        <button
+          className="floating-chat-trigger"
+          onClick={() => changeView("chat")}
+          aria-label="Ask AI Astrologer"
+        >
+          <span className="ms fill" aria-hidden="true">forum</span>
+          Ask Astrologer
         </button>
-        <button className={view === "profile" ? "active" : ""} onClick={() => changeView("profile")}>
-          <span className="pill"><span className="ms" aria-hidden="true">person</span></span>Profile
-        </button>
-        <button className={view === "reading" ? "active" : ""} onClick={() => changeView("reading")}>
-          <span className="pill"><span className="ms" aria-hidden="true">auto_awesome</span></span>Reading
-        </button>
-        <button className={view === "memory" ? "active" : ""} onClick={() => changeView("memory")}>
-          <span className="pill"><span className="ms" aria-hidden="true">sticky_note_2</span></span>Notes
-        </button>
-        <button className={view === "action" ? "active" : ""} onClick={() => changeView("action")}>
-          <span className="pill"><span className="ms" aria-hidden="true">task_alt</span></span>Action
-        </button>
-      </nav>
+      )}
 
       <main className="app">
+        {/* ONBOARDING & ACCOUNT CREATION VIEW */}
+        {view === "onboarding" && (
+          <section className="view active" id="view-onboarding">
+            <div className="onboarding-screen">
+              <div className="onboarding-card">
+                <span className="onboarding-badge">
+                  <span className="ms fill" aria-hidden="true">stars</span> Cosmic Profile
+                </span>
+                <h2 className="onboarding-title">
+                  {authMode === "signup" ? "Create Your Account" : "Welcome Back to Orbit"}
+                </h2>
+                <p className="onboarding-sub">
+                  {authMode === "signup"
+                    ? "Set up your cosmic credentials and birth details to unlock personalized daily wisdom."
+                    : "Enter your email and password to access your personalized cosmic dashboard."}
+                </p>
+
+                <form onSubmit={authMode === "signup" ? handleCreateAccount : handleLogin}>
+                  {authMode === "signup" && (
+                    <div className="field">
+                      <input
+                        type="text"
+                        id="authName"
+                        required
+                        placeholder=" "
+                        value={authForm.name}
+                        onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                      />
+                      <label htmlFor="authName">Full Name</label>
+                    </div>
+                  )}
+
+                  <div className="field">
+                    <input
+                      type="email"
+                      id="authEmail"
+                      required
+                      placeholder=" "
+                      value={authForm.email}
+                      onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                    />
+                    <label htmlFor="authEmail">Email Address</label>
+                  </div>
+
+                  <div className="field">
+                    <input
+                      type="password"
+                      id="authPassword"
+                      required
+                      placeholder=" "
+                      value={authForm.password}
+                      onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                    />
+                    <label htmlFor="authPassword">Password</label>
+                  </div>
+
+                  {authMode === "signup" && (
+                    <>
+                      <div className="field">
+                        <input
+                          type="tel"
+                          id="authPhone"
+                          placeholder=" "
+                          value={authForm.phone}
+                          onChange={(e) => setAuthForm({ ...authForm, phone: e.target.value })}
+                        />
+                        <label htmlFor="authPhone">Phone Number (Optional)</label>
+                      </div>
+
+                      {/* Date of Birth Custom Calendar Widget Card */}
+                      <div className="onboarding-cal-section">
+                        <div className="onboarding-cal-label">
+                          <span className="ms fill" aria-hidden="true">cake</span>
+                          Date of Birth & Astrological Sign
+                        </div>
+                        {renderCalendarWidget()}
+                      </div>
+                    </>
+                  )}
+
+                  <div style={{ marginTop: "18px" }}>
+                    <button type="submit" className="btn filled" style={{ width: "100%", height: "50px", fontSize: "15px" }}>
+                      {authMode === "signup" ? "Create Account & Land On Dashboard" : "Sign In to Dashboard"}
+                    </button>
+                  </div>
+
+                  <div style={{ textAlign: "center", marginTop: "16px", color: "var(--on-var)", fontSize: "13px" }}>
+                    {authMode === "signup" ? (
+                      <>
+                        Already have an account?{" "}
+                        <button
+                          type="button"
+                          className="btn text"
+                          style={{ padding: 0, textDecoration: "underline", color: "#ffffff" }}
+                          onClick={() => setAuthMode("login")}
+                        >
+                          Sign In
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        Need an account?{" "}
+                        <button
+                          type="button"
+                          className="btn text"
+                          style={{ padding: 0, textDecoration: "underline", color: "#ffffff" }}
+                          onClick={() => setAuthMode("signup")}
+                        >
+                          Create Account
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </form>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* INTAKE GUIDED CHAT VIEW */}
         {view === "intake" && (
           <section className="view active" id="view-intake">
@@ -1491,10 +2085,10 @@ export default function OrbitApp() {
           </section>
         )}
 
-        {/* HOME VIEW */}
+        {/* STREAMLINED DASHBOARD (view === "home") */}
         <section className={`view ${view === "home" ? "active" : ""}`} id="view-home">
           <div className="card filled">
-            <div className="label">{timeGreeting}, {userDisplayName}</div>
+            <div className="label">{timeGreeting}, {account?.name || userDisplayName}</div>
             <h2 style={{ marginTop: "4px" }}>Welcome to Orbit</h2>
             <div className="hero">
               <div className="sign" id="signSymbol">
@@ -1515,15 +2109,9 @@ export default function OrbitApp() {
                 <div className="muted">{reading.sign.e} sign · ruled by {reading.sign.p}</div>
               </div>
             </div>
-            {reading.sample && (
-              <div className="banner" id="sampleNotice">
-                <span className="ms" aria-hidden="true">info</span>
-                <span className="t">This is a sample reading. Set up your details to personalize it.</span>
-                <button className="btn text" onClick={startIntake}>Start guided intake</button>
-              </div>
-            )}
           </div>
 
+          {/* 4 LUCKY STATS */}
           <div className="stats">
             <div className="stat"><small>Mood</small><b>{checkin.mood || reading.mood}</b></div>
             <div className="stat"><small>Lucky number</small><b>{reading.num}</b></div>
@@ -1531,8 +2119,75 @@ export default function OrbitApp() {
             <div className="stat"><small>Best hour</small><b>{reading.hour}</b></div>
           </div>
 
+          {/* TODAY'S ACTION CARD */}
+          <div className={`card ${state.actionDone ? "done" : ""}`} id="homeActionCard" style={{ marginTop: "12px" }}>
+            <div className="tile-h">
+              <span className="ms" aria-hidden="true">task_alt</span>
+              <h3>Today's action</h3>
+              {state.actionDone && (
+                <span className="done-tag" style={{ marginLeft: "auto", marginTop: 0 }}>
+                  <span className="ms fill" aria-hidden="true">check_circle</span>Done
+                </span>
+              )}
+            </div>
+            <p className="tile-text">{action.text}</p>
+            <div className="row">
+              <button
+                className={`btn ${state.actionDone ? "tonal" : "filled"}`}
+                onClick={toggleActionDone}
+              >
+                {state.actionDone ? "Undo" : "Mark as done"}
+              </button>
+              <button className="btn text" onClick={handleNextAction}>
+                <span className="ms" aria-hidden="true">refresh</span>Show another
+              </button>
+            </div>
+          </div>
+
+          {/* 3 QUICK-ACCESS HUB CARDS */}
+          <div className="home-hub-grid">
+            <div className="home-hub-card" onClick={() => changeView("reading")}>
+              <div>
+                <div className="home-hub-icon-row">
+                  <div className="home-hub-icon-pill">
+                    <span className="ms fill" aria-hidden="true">auto_awesome</span>
+                  </div>
+                  <span className="ms" style={{ color: "var(--on-var)" }} aria-hidden="true">arrow_forward</span>
+                </div>
+                <div className="home-hub-title">Daily Reading</div>
+                <p className="home-hub-desc">In-depth horoscope forecast across Love, Career & Wellness.</p>
+              </div>
+            </div>
+
+            <div className="home-hub-card" onClick={() => changeView("compatibility")}>
+              <div>
+                <div className="home-hub-icon-row">
+                  <div className="home-hub-icon-pill">
+                    <span className="ms fill" aria-hidden="true">favorite</span>
+                  </div>
+                  <span className="ms" style={{ color: "var(--on-var)" }} aria-hidden="true">arrow_forward</span>
+                </div>
+                <div className="home-hub-title">Synastry Match</div>
+                <p className="home-hub-desc">Elemental alignment & relationship chemistry calculator.</p>
+              </div>
+            </div>
+
+            <div className="home-hub-card" onClick={() => changeView("chat")}>
+              <div>
+                <div className="home-hub-icon-row">
+                  <div className="home-hub-icon-pill">
+                    <span className="ms fill" aria-hidden="true">forum</span>
+                  </div>
+                  <span className="ms" style={{ color: "var(--on-var)" }} aria-hidden="true">arrow_forward</span>
+                </div>
+                <div className="home-hub-title">Ask AI Astrologer</div>
+                <p className="home-hub-desc">Interactive celestial guidance powered by Gemini AI.</p>
+              </div>
+            </div>
+          </div>
+
           {/* DAILY CHECK-IN TILE */}
-          <div className="checkin-card">
+          <div className="checkin-card" style={{ marginTop: "14px" }}>
             <div className="checkin-title-row">
               <span className="ms fill" aria-hidden="true">today</span>
               <h3 style={{ color: "var(--on-surface)", fontSize: "16px" }}>Daily Check-in</h3>
@@ -1577,17 +2232,6 @@ export default function OrbitApp() {
 
             <div className="checkin-group">
               <div className="checkin-group-label">The One Thing To Get Done Today:</div>
-              {intake.goal && (
-                <div className="tap-chips-row" style={{ marginBottom: "8px" }}>
-                  <button
-                    type="button"
-                    className={`tap-chip ${checkin.mainTask === intake.goal ? "selected" : ""}`}
-                    onClick={() => setCheckin({ ...checkin, mainTask: intake.goal })}
-                  >
-                    Goal: {clip(intake.goal, 28)}
-                  </button>
-                </div>
-              )}
               <div className="field" style={{ marginTop: 0 }}>
                 <input
                   type="text"
@@ -1604,100 +2248,20 @@ export default function OrbitApp() {
               <button className="btn filled" onClick={() => handleSaveCheckin(false)}>
                 Save check-in
               </button>
-              <button className="btn tonal" onClick={() => handleSaveCheckin(true)}>
-                Save and add to notes
-              </button>
             </div>
           </div>
 
-          {/* WEEKLY REFLECTION CARD */}
-          {!weekly.answered && (
-            <div className="weekly-card">
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--green)", marginBottom: "8px" }}>
-                <span className="ms fill" aria-hidden="true">published_with_changes</span>
-                <h3 style={{ color: "var(--on-surface)" }}>Weekly Follow-up</h3>
-              </div>
-              <p style={{ color: "var(--on-var)", fontSize: "13px", marginBottom: "12px" }}>
-                A quick 1-minute check on how your week went:
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <div>
-                  <small style={{ color: "var(--on-var)", display: "block", marginBottom: "4px" }}>Did you complete your weekly action?</small>
-                  <div className="tap-chips-row">
-                    {["Yes", "Partly", "No"].map((opt) => (
-                      <button key={opt} type="button" className="tap-chip" onClick={() => handleWeeklySubmit(opt, "Somewhat", "Keep same")}>
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="grid two" style={{ marginTop: "12px" }}>
-            <div className={`card ${state.actionDone ? "done" : ""}`} id="homeActionCard">
-              <div className="tile-h">
-                <span className="ms" aria-hidden="true">task_alt</span>
-                <h3>Today's action</h3>
-                {state.actionDone && (
-                  <span className="done-tag" style={{ marginLeft: "auto", marginTop: 0 }}>
-                    <span className="ms fill" aria-hidden="true">check_circle</span>Done
-                  </span>
-                )}
-              </div>
-              <p className="tile-text">{action.text}</p>
-              <div className="row">
-                <button
-                  className={`btn ${state.actionDone ? "tonal" : "filled"}`}
-                  onClick={toggleActionDone}
-                >
-                  {state.actionDone ? "Undo" : "Mark as done"}
-                </button>
-                <button className="btn text" onClick={() => changeView("action")}>Details</button>
-              </div>
-            </div>
-
-            <div className="card">
-              <div className="tile-h">
-                <span className="ms" aria-hidden="true">sticky_note_2</span>
-                <h3>Notes</h3>
-              </div>
-              <div className="big-num">{notes.length}</div>
-              <p className="muted">
-                {notes.length
-                  ? `Latest: ${clip(notes[0].text, 60)}`
-                  : "No notes yet. Add one to personalize your readings."}
-              </p>
-              <div className="row">
-                <button className="btn tonal" onClick={() => changeView("memory")}>Manage notes</button>
-              </div>
-            </div>
-          </div>
-
-          <div className="card" style={{ marginTop: "12px" }}>
-            <div className="label">Today's horoscope</div>
+          {/* HOROSCOPE SPOTLIGHT */}
+          <div className="card" style={{ marginTop: "14px" }}>
+            <div className="label">Today's horoscope reflection</div>
             <p className="lead">{aiReading ? aiReading.summary : reading.summary}</p>
             <div className="row">
-              <button className="btn filled" onClick={() => { changeView("reading"); triggerGenerate(); }}>
-                <span className="ms" aria-hidden="true">auto_awesome</span>New reading
+              <button className="btn filled" onClick={() => changeView("reading")}>
+                <span className="ms" aria-hidden="true">auto_awesome</span>View Full Reading
               </button>
-              <button className="btn outlined" onClick={() => changeView("profile")}>Edit profile</button>
-            </div>
-          </div>
-
-          <div className="grid three" style={{ marginTop: "12px" }}>
-            <div className="card topic">
-              <div className="head"><span className="ms" aria-hidden="true">work</span><h3>Career</h3></div>
-              <p>{aiReading ? aiReading.career : reading.career}</p>
-            </div>
-            <div className="card topic">
-              <div className="head"><span className="ms" aria-hidden="true">favorite</span><h3>Relationships</h3></div>
-              <p>{aiReading ? aiReading.relationships : reading.rel}</p>
-            </div>
-            <div className="card topic">
-              <div className="head"><span className="ms" aria-hidden="true">self_improvement</span><h3>Personal growth</h3></div>
-              <p>{aiReading ? aiReading.personalGrowth : reading.growth}</p>
+              <button className="btn outlined" onClick={() => changeView("profile")}>
+                My Profile
+              </button>
             </div>
           </div>
         </section>
@@ -1707,6 +2271,25 @@ export default function OrbitApp() {
           <div className="card">
             <h2>Your details</h2>
             <p className="muted">Saved in this browser only. Nothing is sent anywhere without your permission.</p>
+
+            {/* Account Information Card */}
+            <div style={{ margin: "16px 0", padding: "16px", borderRadius: "18px", background: "rgba(16, 24, 60, 0.65)", border: "1px solid rgba(255, 255, 255, 0.16)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+                <div>
+                  <div className="label">Account Details</div>
+                  <div style={{ fontSize: "16px", fontWeight: "700", marginTop: "2px" }}>{account?.name || intake.name || "Orbit Seeker"}</div>
+                  <div style={{ color: "var(--on-var)", fontSize: "12px", marginTop: "2px" }}>
+                    {account?.email ? `${account.email}` : "No account linked"} {account?.phone ? `· ${account.phone}` : ""}
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button className="btn tonal" style={{ height: "34px", fontSize: "12px" }} onClick={handleLogout}>
+                    <span className="ms" style={{ fontSize: "16px" }}>logout</span>
+                    Sign Out / Switch Account
+                  </button>
+                </div>
+              </div>
+            </div>
 
             {/* Guided Intake Banner */}
             <div style={{ margin: "16px 0", padding: "16px", borderRadius: "18px", background: "linear-gradient(160deg, rgba(65, 88, 138, 0.45) 0%, rgba(35, 50, 95, 0.65) 100%)", border: "1px solid rgba(255, 255, 255, 0.16)", backdropFilter: "blur(20px)" }}>
@@ -1726,207 +2309,8 @@ export default function OrbitApp() {
               </div>
             </div>
 
-            {/* Profile Custom Calendar Widget (Matching Reference Design: 3 Tabs, Big Typography, Curved Arc) */}
-            <div className="profile-calendar-widget" role="region" aria-label="Birth date selector">
-              {/* Hidden input to maintain DOM compatibility */}
-              <input type="hidden" id="birth" name="birth" value={profile.birth || ""} />
-
-              {/* Top Segmented Tabs: 3 Tabs (Day, Month, Year) */}
-              <div className="cal-tabs-bar">
-                <div className="cal-tabs-track" role="tablist" aria-label="Date selector tabs">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={calendarTab === "day"}
-                    className={`cal-tab-btn ${calendarTab === "day" ? "active" : ""}`}
-                    onClick={() => setCalendarTab("day")}
-                  >
-                    Day
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={calendarTab === "month"}
-                    className={`cal-tab-btn ${calendarTab === "month" ? "active" : ""}`}
-                    onClick={() => setCalendarTab("month")}
-                  >
-                    Month
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={calendarTab === "year"}
-                    className={`cal-tab-btn ${calendarTab === "year" ? "active" : ""}`}
-                    onClick={() => setCalendarTab("year")}
-                  >
-                    Year
-                  </button>
-                </div>
-              </div>
-
-              {/* Big Typography Display: Month on Left, Day on Right (Exact reference match!) */}
-              <div className="cal-big-header">
-                <div className="cal-big-month-col">
-                  <span className="cal-big-month">
-                    {MONTH_NAMES[currentBirthParts.month - 1]}
-                  </span>
-                  <span className="cal-big-sub">
-                    {currentBirthParts.year} · {detectedSignInfo.n} {detectedSignInfo.s}&#xFE0E;
-                  </span>
-                </div>
-                <div className="cal-big-day">
-                  {currentBirthParts.day}
-                </div>
-              </div>
-
-              {/* Reel Stage (Upright circular flow for Day/Month, Straight line with Pills for Year) */}
-              <div
-                className="cal-arc-stage"
-                role="region"
-                aria-label={`Select ${calendarTab}`}
-                onTouchStart={handleCalTouchStart}
-                onTouchMove={handleCalTouchMove}
-                onTouchEnd={handleCalTouchEnd}
-                onMouseDown={handleCalMouseDown}
-                onMouseMove={handleCalMouseMove}
-                onMouseUp={handleCalMouseUp}
-                onMouseLeave={handleCalMouseUp}
-              >
-                {/* Straight subtle baseline for Year only; Curved line removed as requested */}
-                {calendarTab === "year" && (
-                  <div className="cal-straight-line" aria-hidden="true" />
-                )}
-
-                {/* Items */}
-                {getArchItems().map((item) => {
-                  if (item.hidden) return null;
-                  const k = item.k;
-
-                  if (item.isEmpty) {
-                    const R = 190;
-                    const angleStep = 0.244;
-                    const angle = k * angleStep + (isCalDragging ? (calDragOffset / 50) * angleStep * 0.6 : 0);
-                    const x = Math.round(R * Math.sin(angle));
-                    const y = Math.round(R * (1 - Math.cos(angle)));
-                    const scale = 0.8;
-                    const opacity = Math.max(0.18, 1 - Math.abs(k) * 0.26);
-
-                    return (
-                      <div
-                        key={`empty-${k}`}
-                        className="cal-arc-item cal-arc-empty-slot"
-                        style={{
-                          transform: `translate(calc(-50% + ${x}px), ${y}px) scale(${scale})`,
-                          opacity: opacity,
-                          zIndex: 5,
-                          transition: isCalDragging
-                            ? "none"
-                            : "transform 0.52s cubic-bezier(0.34, 1.45, 0.64, 1), opacity 0.35s ease"
-                        }}
-                        aria-hidden="true"
-                      >
-                        <div className="cal-empty-dot" />
-                      </div>
-                    );
-                  }
-
-                  if (item.isYear) {
-                    // Straight horizontal rail layout with pills (No circle!)
-                    const x = k * 74 + (isCalDragging ? calDragOffset * 0.5 : 0);
-                    const scale = k === 0 ? 1 : 0.88;
-                    const opacity = k === 0 ? 1 : Math.max(0.28, 1 - Math.abs(k) * 0.35);
-                    const zIndex = 10 - Math.abs(k);
-
-                    return (
-                      <button
-                        key={`${calendarTab}-${item.val}`}
-                        type="button"
-                        className={`cal-year-pill-item ${item.isSelected ? "selected" : ""}`}
-                        style={{
-                          transform: `translate(calc(-50% + ${x}px), 0px) scale(${scale})`,
-                          opacity: opacity,
-                          zIndex: zIndex,
-                          transition: isCalDragging
-                            ? "none"
-                            : "transform 0.32s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s ease"
-                        }}
-                        onClick={() => {
-                          if (Math.abs(calDragRef.current.currentX - calDragRef.current.startX) < 6) {
-                            if (k !== 0) stepCalItem(k);
-                          }
-                        }}
-                        aria-label={`Select year ${item.bottom}`}
-                      >
-                        {item.bottom}
-                      </button>
-                    );
-                  }
-
-                  // Day & Month: Exact upright angle (no slanting) along circular path
-                  const R = 190;
-                  const angleStep = 0.244; // ~14 deg
-                  const angle = k * angleStep + (isCalDragging ? (calDragOffset / 50) * angleStep * 0.6 : 0);
-                  const x = Math.round(R * Math.sin(angle));
-                  const y = Math.round(R * (1 - Math.cos(angle)));
-                  const scale = k === 0 ? 1 : Math.max(0.72, 1 - Math.abs(k) * 0.08);
-                  const opacity = k === 0 ? 1 : Math.max(0.18, 1 - Math.abs(k) * 0.26);
-                  const zIndex = 10 - Math.abs(k);
-
-                  return (
-                    <button
-                      key={`${calendarTab}-${item.val}`}
-                      type="button"
-                      className={`cal-arc-item ${item.isSelected ? "selected" : ""}`}
-                      style={{
-                        transform: `translate(calc(-50% + ${x}px), ${y}px) scale(${scale})`,
-                        opacity: opacity,
-                        zIndex: zIndex,
-                        transition: isCalDragging
-                          ? "none"
-                          : "transform 0.52s cubic-bezier(0.34, 1.45, 0.64, 1), opacity 0.35s ease"
-                      }}
-                      onClick={() => {
-                        if (Math.abs(calDragRef.current.currentX - calDragRef.current.startX) < 6) {
-                          if (item.slot) {
-                            if (calendarTab === "day") {
-                              updateBirthDate(item.slot.year, item.slot.month, item.slot.day);
-                            } else if (calendarTab === "month") {
-                              updateBirthDate(currentBirthParts.year, item.slot.month, currentBirthParts.day);
-                            }
-                          } else if (k !== 0) {
-                            stepCalItem(k);
-                          }
-                        }
-                      }}
-                      aria-label={`Select ${calendarTab} ${item.bottom}`}
-                    >
-                      <span className="cal-arc-top">{item.top}</span>
-                      <div className="cal-arc-circle">
-                        <span>{item.bottom}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Bottom Bar: Matching Reference note info & action button */}
-              <div className="cal-footer-bar">
-                <div className="cal-footer-note">
-                  <span className="ms" aria-hidden="true">auto_awesome</span>
-                  <span>
-                    {detectedSignInfo.n} · {MONTH_NAMES[currentBirthParts.month - 1]} {currentBirthParts.day}, {currentBirthParts.year}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="cal-footer-btn"
-                  onClick={handleJumpToToday}
-                >
-                  <span className="ms" aria-hidden="true">today</span>
-                  Today
-                </button>
-              </div>
-            </div>
+            {/* Custom Birth Calendar Widget (3 Tabs, Big Typography, Circular Arc) */}
+            {renderCalendarWidget()}
 
             {/* 3D Zodiac Sign Card Deck Carousel */}
             <div className="sign-carousel-section">
@@ -2177,6 +2561,224 @@ export default function OrbitApp() {
                   {reading.used.notes} saved note{reading.used.notes > 1 ? "s" : ""}
                 </span>
               )}
+            </div>
+          </div>
+        </section>
+
+        {/* COMPATIBILITY (SYNASTRY) VIEW */}
+        <section className={`view ${view === "compatibility" ? "active" : ""}`} id="view-compatibility">
+          <div className="compat-hero-box">
+            <span className="label">Astrological Synastry</span>
+            <h2 style={{ marginTop: "4px" }}>Cosmic Compatibility Match</h2>
+            <p className="muted">Analyze elemental harmony and celestial resonance between two signs.</p>
+
+            <div className="compat-pair-grid">
+              <div className="compat-person-tile">
+                <div style={{ fontSize: "28px" }}>{reading.sign.s}&#xFE0E;</div>
+                <div style={{ fontWeight: "700", marginTop: "4px" }}>{account?.name || "You"}</div>
+                <div className="muted" style={{ fontSize: "12px" }}>{reading.sign.n} ({reading.sign.e})</div>
+              </div>
+
+              <div className="compat-heart-pill">
+                <span className="ms fill" style={{ fontSize: "20px" }} aria-hidden="true">favorite</span>
+              </div>
+
+              <div className="compat-person-tile">
+                <div style={{ fontSize: "28px" }}>{signObj(partnerSign).s}&#xFE0E;</div>
+                <div style={{ fontWeight: "700", marginTop: "4px" }}>{partnerName || "Partner"}</div>
+                <div className="muted" style={{ fontSize: "12px" }}>{partnerSign} ({signObj(partnerSign).e})</div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <div className="field">
+                <input
+                  type="text"
+                  id="partnerNameInput"
+                  placeholder=" "
+                  value={partnerName}
+                  onChange={(e) => setPartnerName(e.target.value)}
+                />
+                <label htmlFor="partnerNameInput">Partner's Name</label>
+              </div>
+
+              <div style={{ marginTop: "12px" }}>
+                <span className="label">Select Partner's Zodiac Sign:</span>
+                <div className="compat-chips-select">
+                  {SIGNS.map((s) => (
+                    <button
+                      key={s.n}
+                      type="button"
+                      className={`compat-sign-chip ${partnerSign === s.n ? "active" : ""}`}
+                      onClick={() => setPartnerSign(s.n)}
+                    >
+                      {s.s}&#xFE0E; {s.n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginTop: "18px" }}>
+                <button
+                  className="btn filled"
+                  style={{ width: "100%", height: "48px" }}
+                  onClick={handleAnalyzeCompatibility}
+                  disabled={isCompatLoading}
+                >
+                  <span className="ms" aria-hidden="true">auto_awesome</span>
+                  {isCompatLoading ? "Consulting the Stars…" : `Calculate ${reading.sign.n} & ${partnerSign} Synergy`}
+                </button>
+              </div>
+            </div>
+
+            {/* Compatibility Results */}
+            {compatResult && (
+              <div style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.14)" }}>
+                <div className="compat-score-row">
+                  <div>
+                    <span className="label">Celestial Synergy</span>
+                    <div style={{ fontSize: "32px", fontWeight: "800", color: "#ffffff" }}>
+                      {compatResult.score}%
+                    </div>
+                  </div>
+                  <div className="done-tag" style={{ margin: 0 }}>
+                    <span className="ms fill" aria-hidden="true">stars</span> High Resonance
+                  </div>
+                </div>
+
+                <div className="compat-meter-item">
+                  <div className="compat-meter-header">
+                    <span>Love & Emotional Depth</span>
+                    <span>{compatResult.love}%</span>
+                  </div>
+                  <div className="compat-meter-track">
+                    <div className="compat-meter-fill" style={{ width: `${compatResult.love}%` }} />
+                  </div>
+                </div>
+
+                <div className="compat-meter-item">
+                  <div className="compat-meter-header">
+                    <span>Communication & Intellect</span>
+                    <span>{compatResult.communication}%</span>
+                  </div>
+                  <div className="compat-meter-track">
+                    <div className="compat-meter-fill" style={{ width: `${compatResult.communication}%` }} />
+                  </div>
+                </div>
+
+                <div className="compat-meter-item">
+                  <div className="compat-meter-header">
+                    <span>Friendship & Longevity</span>
+                    <span>{compatResult.friendship}%</span>
+                  </div>
+                  <div className="compat-meter-track">
+                    <div className="compat-meter-fill" style={{ width: `${compatResult.friendship}%` }} />
+                  </div>
+                </div>
+
+                <div className="reading-description-box" style={{ marginTop: "16px" }}>
+                  <p className="reading-description-text">{compatResult.summary}</p>
+                  {compatResult.advice && (
+                    <p style={{ marginTop: "10px", fontSize: "13px", color: "#c5cefa", fontStyle: "italic" }}>
+                      💡 Astrological Tip: {compatResult.advice}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ASK AI ASTROLOGER CHAT VIEW */}
+        <section className={`view ${view === "chat" ? "active" : ""}`} id="view-chat">
+          <div className="chat-window">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div className="orbit-avatar" style={{ width: "38px", height: "38px" }}>
+                  <span className="ms fill" aria-hidden="true">auto_awesome</span>
+                </div>
+                <div>
+                  <h2 style={{ fontSize: "18px", fontWeight: "700" }}>Orbit Astrologer</h2>
+                  <div style={{ color: "var(--on-var)", fontSize: "12px" }}>
+                    Powered by Gemini AI · Conversational Cosmic Guidance
+                  </div>
+                </div>
+              </div>
+              <span className="reading-badge">Active</span>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="chat-messages-area">
+              {aiChatMessages.map((msg, i) => (
+                <div key={i} className={`bubble-row ${msg.role === "user" ? "user" : "orbit"}`}>
+                  {msg.role !== "user" && (
+                    <div className="orbit-avatar">
+                      <span className="ms fill" aria-hidden="true">brightness_2</span>
+                    </div>
+                  )}
+                  <div className={`bubble ${msg.role === "user" ? "user" : "orbit"}`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {isAiChatLoading && (
+                <div className="bubble-row orbit">
+                  <div className="orbit-avatar">
+                    <span className="ms fill" aria-hidden="true">brightness_2</span>
+                  </div>
+                  <div className="bubble orbit" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <div className="spinner" style={{ width: "16px", height: "16px" }} />
+                    <span>Listening to the stars…</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Prompt Suggestion Chips */}
+            <div className="chat-prompt-chips">
+              {[
+                "🌟 How are my transits today?",
+                "💼 Career & ambition guidance",
+                "❤️ Who is my ideal astrological match?",
+                "🌙 How can I restore emotional balance?"
+              ].map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  className="chat-prompt-chip"
+                  onClick={() => handleSendChatMessage(chip)}
+                  disabled={isAiChatLoading}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+
+            {/* Input Bar */}
+            <div className="chat-input-bar">
+              <input
+                type="text"
+                className="chat-text-input"
+                placeholder="Ask about your sign, transits, or advice..."
+                value={aiChatInput}
+                onChange={(e) => setAiChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendChatMessage();
+                  }
+                }}
+                disabled={isAiChatLoading}
+              />
+              <button
+                type="button"
+                className="btn filled"
+                style={{ height: "46px", borderRadius: "9999px", padding: "0 18px" }}
+                onClick={() => handleSendChatMessage()}
+                disabled={isAiChatLoading || !aiChatInput.trim()}
+              >
+                <span className="ms" aria-hidden="true">send</span>
+              </button>
             </div>
           </div>
         </section>

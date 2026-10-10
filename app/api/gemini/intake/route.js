@@ -103,7 +103,7 @@ Output strictly as JSON:
 }`;
 
         const response = await ai.models.generateContent({
-          model: 'gemini-2.0-flash',
+          model: 'gemini-flash-latest',
           contents: prompt,
           config: {
             systemInstruction: SYSTEM_PROMPT,
