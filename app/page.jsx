@@ -370,6 +370,30 @@ function signObj(n) {
   return SIGNS.find((s) => s.n === n) || SIGNS[11];
 }
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const YEAR_LIST = Array.from({ length: 2026 - 1930 + 1 }, (_, i) => 2026 - i);
+
+function parseBirthDate(val) {
+  if (val && typeof val === "string") {
+    const parts = val.split("-");
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const d = parseInt(parts[2], 10);
+      if (!isNaN(y) && !isNaN(m) && !isNaN(d) && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+        return { year: y, month: m, day: d, isSet: true };
+      }
+    }
+  }
+  return { year: 2000, month: 8, day: 23, isSet: false };
+}
+
 function hour(r) {
   const h = Math.floor(r() * 12) + 1;
   const m = Math.floor(r() * 12) * 5;
@@ -395,6 +419,11 @@ export default function OrbitApp() {
   const [state, setState] = useState({ variant: 0, actionDate: "", actionVariant: 0, actionDone: false });
   const [checkin, setCheckin] = useState({ energy: "Okay", mood: "Good", mainTask: "", date: "" });
   const [weekly, setWeekly] = useState({ lastDone: "", answered: false });
+
+  // Profile Calendar Widget state
+  const [calendarTab, setCalendarTab] = useState("day"); // "day" | "month" | "year"
+  const dayScrollRef = useRef(null);
+  const yearScrollRef = useRef(null);
 
   const [deckIndex, setDeckIndex] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
@@ -731,6 +760,58 @@ export default function OrbitApp() {
     setDeckIndex(idx);
     setProfile((p) => ({ ...p, sign: SIGNS[idx].n }));
   };
+
+  const currentBirthParts = parseBirthDate(profile.birth || intake.birthDate);
+  const detectedBirthSign = signFromDate(
+    `${currentBirthParts.year}-${String(currentBirthParts.month).padStart(2, "0")}-${String(currentBirthParts.day).padStart(2, "0")}`
+  );
+  const detectedSignInfo = signObj(detectedBirthSign || profile.sign || "Virgo");
+
+  const updateBirthDate = (newY, newM, newD) => {
+    const maxD = new Date(newY, newM, 0).getDate();
+    const clampedD = Math.min(newD, maxD);
+    const dateStr = `${newY}-${String(newM).padStart(2, "0")}-${String(clampedD).padStart(2, "0")}`;
+    const detected = signFromDate(dateStr);
+    const newProf = { ...profile, birth: dateStr };
+    if (detected) {
+      newProf.sign = detected;
+      const idx = SIGNS.findIndex((s) => s.n === detected);
+      if (idx !== -1) setDeckIndex(idx);
+    }
+    setProfile(newProf);
+  };
+
+  const shiftDay = (delta) => {
+    const maxD = new Date(currentBirthParts.year, currentBirthParts.month, 0).getDate();
+    let nextD = currentBirthParts.day + delta;
+    if (nextD < 1) nextD = 1;
+    if (nextD > maxD) nextD = maxD;
+    updateBirthDate(currentBirthParts.year, currentBirthParts.month, nextD);
+  };
+
+  const handleJumpToToday = () => {
+    const now = new Date();
+    updateBirthDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    showSnack("Jumped to today's date");
+  };
+
+  useEffect(() => {
+    if (calendarTab === "day" && dayScrollRef.current) {
+      const el = document.getElementById(`cal-day-${currentBirthParts.day}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      }
+    }
+  }, [calendarTab, currentBirthParts.day, currentBirthParts.month]);
+
+  useEffect(() => {
+    if (calendarTab === "year" && yearScrollRef.current) {
+      const el = document.getElementById(`cal-year-${currentBirthParts.year}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [calendarTab, currentBirthParts.year]);
 
   const handleBirthChange = (e) => {
     const val = e.target.value;
@@ -1437,11 +1518,189 @@ export default function OrbitApp() {
               </div>
             </div>
 
-            <div className="field on">
-              <input type="date" id="birth" value={profile.birth || intake.birthDate || ""} onChange={handleBirthChange} />
-              <label htmlFor="birth">Birth date</label>
+            {/* Profile Custom Calendar Widget (Matching Reference Design: 3 Tabs, Big Typography, Curved Arc) */}
+            <div className="profile-calendar-widget" role="region" aria-label="Birth date selector">
+              {/* Hidden input to maintain DOM compatibility */}
+              <input type="hidden" id="birth" name="birth" value={profile.birth || ""} />
+
+              {/* Top Segmented Tabs: 3 Tabs (Day, Month, Year) + Today Action Button */}
+              <div className="cal-tabs-bar">
+                <div className="cal-tabs-track" role="tablist" aria-label="Date selector tabs">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={calendarTab === "day"}
+                    className={`cal-tab-btn ${calendarTab === "day" ? "active" : ""}`}
+                    onClick={() => setCalendarTab("day")}
+                  >
+                    Day
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={calendarTab === "month"}
+                    className={`cal-tab-btn ${calendarTab === "month" ? "active" : ""}`}
+                    onClick={() => setCalendarTab("month")}
+                  >
+                    Month
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={calendarTab === "year"}
+                    className={`cal-tab-btn ${calendarTab === "year" ? "active" : ""}`}
+                    onClick={() => setCalendarTab("year")}
+                  >
+                    Year
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  className="cal-icon-action"
+                  title="Jump to today"
+                  aria-label="Jump to today"
+                  onClick={handleJumpToToday}
+                >
+                  <span className="ms" aria-hidden="true">event</span>
+                </button>
+              </div>
+
+              {/* Big Typography Display: Month on Left, Day on Right (Exact reference match!) */}
+              <div className="cal-big-header">
+                <div className="cal-big-month-col">
+                  <span className="cal-big-month">
+                    {MONTH_NAMES[currentBirthParts.month - 1]}
+                  </span>
+                  <span className="cal-big-sub">
+                    {currentBirthParts.year} · {detectedSignInfo.n} {detectedSignInfo.s}&#xFE0E;
+                  </span>
+                </div>
+                <div className="cal-big-day">
+                  {currentBirthParts.day}
+                </div>
+              </div>
+
+              {/* TAB 1: DAY SELECTOR REEL (with curved arc line & weekdays) */}
+              {calendarTab === "day" && (
+                <div className="cal-day-reel-wrapper">
+                  <div className="cal-arc-bg" aria-hidden="true">
+                    <svg viewBox="0 0 500 40" preserveAspectRatio="none" className="cal-arc-svg">
+                      <path d="M 0,34 Q 250,6 500,34" fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="1.5" />
+                    </svg>
+                  </div>
+
+                  <div className="cal-day-reel-controls">
+                    <button
+                      type="button"
+                      className="cal-nav-arrow"
+                      aria-label="Previous day"
+                      onClick={() => shiftDay(-1)}
+                    >
+                      <span className="ms" aria-hidden="true">chevron_left</span>
+                    </button>
+
+                    <div className="cal-day-scroll" ref={dayScrollRef}>
+                      {Array.from(
+                        { length: new Date(currentBirthParts.year, currentBirthParts.month, 0).getDate() },
+                        (_, i) => i + 1
+                      ).map((d) => {
+                        const isSelected = d === currentBirthParts.day;
+                        const weekday = WEEKDAY_NAMES[new Date(currentBirthParts.year, currentBirthParts.month - 1, d).getDay()];
+                        return (
+                          <button
+                            type="button"
+                            key={d}
+                            id={`cal-day-${d}`}
+                            className={`cal-day-item ${isSelected ? "selected" : ""}`}
+                            onClick={() => updateBirthDate(currentBirthParts.year, currentBirthParts.month, d)}
+                            aria-label={`${MONTH_NAMES[currentBirthParts.month - 1]} ${d}, ${weekday}`}
+                          >
+                            <span className="cal-day-weekday">{weekday}</span>
+                            <div className="cal-day-circle">
+                              <span>{d}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="cal-nav-arrow"
+                      aria-label="Next day"
+                      onClick={() => shiftDay(1)}
+                    >
+                      <span className="ms" aria-hidden="true">chevron_right</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: MONTH GRID */}
+              {calendarTab === "month" && (
+                <div className="cal-month-grid" role="listbox" aria-label="Select month">
+                  {MONTH_NAMES.map((name, idx) => {
+                    const monthNum = idx + 1;
+                    const isSelected = monthNum === currentBirthParts.month;
+                    return (
+                      <button
+                        type="button"
+                        key={name}
+                        className={`cal-month-pill ${isSelected ? "selected" : ""}`}
+                        onClick={() => {
+                          updateBirthDate(currentBirthParts.year, monthNum, currentBirthParts.day);
+                        }}
+                      >
+                        {name.slice(0, 3)}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* TAB 3: YEAR GRID */}
+              {calendarTab === "year" && (
+                <div className="cal-year-grid-wrap" ref={yearScrollRef}>
+                  <div className="cal-year-grid" role="listbox" aria-label="Select year">
+                    {YEAR_LIST.map((y) => {
+                      const isSelected = y === currentBirthParts.year;
+                      return (
+                        <button
+                          type="button"
+                          key={y}
+                          id={`cal-year-${y}`}
+                          className={`cal-year-pill ${isSelected ? "selected" : ""}`}
+                          onClick={() => {
+                            updateBirthDate(y, currentBirthParts.month, currentBirthParts.day);
+                          }}
+                        >
+                          {y}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom Bar: Matching Reference note info & action button */}
+              <div className="cal-footer-bar">
+                <div className="cal-footer-note">
+                  <span className="ms" aria-hidden="true">auto_awesome</span>
+                  <span>
+                    {detectedSignInfo.n} · {MONTH_NAMES[currentBirthParts.month - 1]} {currentBirthParts.day}, {currentBirthParts.year}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="cal-footer-btn"
+                  onClick={handleJumpToToday}
+                >
+                  <span className="ms" aria-hidden="true">today</span>
+                  Today
+                </button>
+              </div>
             </div>
-            <div className="support"></div>
 
             {/* 3D Zodiac Sign Card Deck Carousel */}
             <div className="sign-carousel-section">
