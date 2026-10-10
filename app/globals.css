@@ -732,19 +732,23 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
 /* =====================================================================
    PROFILE CALENDAR WIDGET (Matching Reference Design)
-   Frosted Glass, 3 Tabs (Day, Month, Year), Big Typography, Curved Arc Reel
+   Frosted Glass, 3 Tabs (Day, Month, Year), Big Typography, Arched Reel
    ===================================================================== */
 .profile-calendar-widget {
   position: relative;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   background: linear-gradient(160deg, rgba(78, 104, 153, 0.45) 0%, rgba(45, 62, 105, 0.62) 50%, rgba(25, 36, 73, 0.8) 100%);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 28px;
-  padding: 22px 18px 18px;
+  padding: 20px 18px 18px;
   margin: 18px 0 24px;
   box-shadow: 0 16px 40px rgba(7, 11, 32, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.22);
   user-select: none;
+  -webkit-user-select: none;
   overflow: hidden;
 }
 
@@ -766,18 +770,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 20px;
+  width: 100%;
 }
 
 .cal-tabs-track {
   display: inline-flex;
   align-items: center;
-  background: rgba(13, 19, 46, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(13, 19, 46, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 9999px;
   padding: 4px;
-  gap: 3px;
+  gap: 2px;
 }
 
 .cal-tab-btn {
@@ -787,10 +792,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   font-weight: 600;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.68);
   cursor: pointer;
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   font-family: var(--font);
+  white-space: nowrap;
 }
 
 .cal-tab-btn:hover {
@@ -814,6 +820,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   display: grid;
   place-items: center;
   cursor: pointer;
+  flex-shrink: 0;
   transition: all 0.2s ease;
 }
 
@@ -828,18 +835,21 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   height: 20px;
 }
 
-/* Big Typography Header (Direct reference match!) */
+/* Big Typography Header */
 .cal-big-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 0 6px;
-  margin-bottom: 22px;
+  padding: 0 4px;
+  margin-bottom: 18px;
+  width: 100%;
 }
 
 .cal-big-month-col {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  flex: 1;
 }
 
 .cal-big-month {
@@ -854,11 +864,12 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .cal-big-sub {
   font-size: 13px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.72);
   margin-top: 4px;
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
 }
 
 .cal-big-day {
@@ -869,21 +880,34 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   letter-spacing: -1.5px;
   text-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  margin-left: 12px;
 }
 
-/* DAY TAB: Reel Container */
-.cal-day-reel-wrapper {
+/* Arched Reel Stage (Common to Day, Month, and Year) */
+.cal-arc-stage {
   position: relative;
-  margin: 6px 0 18px;
-  padding: 8px 0 16px;
+  width: 100%;
+  height: 112px;
+  margin: 6px 0 16px;
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
 }
 
+.cal-arc-stage:active {
+  cursor: grabbing;
+}
+
+/* Underlying Curved SVG Arch Line */
 .cal-arc-bg {
   position: absolute;
-  left: -10px;
-  right: -10px;
-  bottom: 12px;
-  height: 38px;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  height: 48px;
   pointer-events: none;
   z-index: 1;
 }
@@ -894,206 +918,72 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   display: block;
 }
 
-.cal-day-reel-controls {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.cal-nav-arrow {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
-}
-
-.cal-nav-arrow:hover {
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.cal-nav-arrow .ms {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-}
-
-.cal-day-scroll {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  scroll-behavior: smooth;
-  padding: 6px 12px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  flex: 1;
-}
-
-.cal-day-scroll::-webkit-scrollbar {
-  display: none;
-}
-
-.cal-day-item {
+/* Individual Item on the Arch */
+.cal-arc-item {
+  position: absolute;
+  top: 6px;
+  left: 50%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
   background: transparent;
   border: none;
   cursor: pointer;
-  padding: 4px 6px;
-  min-width: 44px;
-  flex-shrink: 0;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-  font-family: var(--font);
+  padding: 0;
+  width: 44px;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform, opacity;
 }
 
-.cal-day-item:hover {
-  transform: translateY(-2px);
-}
-
-.cal-day-weekday {
+.cal-arc-top {
   font-size: 12px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 6px;
   letter-spacing: 0.2px;
+  line-height: 1;
+  transition: color 0.25s ease;
 }
 
-.cal-day-circle {
+.cal-arc-circle {
   width: 42px;
   height: 42px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.88);
   background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none !important; /* No glow as requested! */
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.cal-day-item:hover .cal-day-circle {
-  background: rgba(255, 255, 255, 0.12);
-}
-
-/* Reference Highlight Circle */
-.cal-day-item.selected .cal-day-weekday {
-  color: #ffffff;
-  font-weight: 700;
-}
-
-.cal-day-item.selected .cal-day-circle {
-  background: rgba(58, 86, 134, 0.9);
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 18px rgba(96, 145, 238, 0.45);
-  color: #ffffff;
-  font-weight: 700;
-  transform: scale(1.08);
-}
-
-/* MONTH TAB: Grid */
-.cal-month-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin: 6px 0 16px;
-  animation: fadeIn 0.2s ease-out;
-}
-
-.cal-month-pill {
-  padding: 12px 6px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 13px;
-  font-weight: 600;
   font-family: var(--font);
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.2s ease;
 }
 
-.cal-month-pill:hover {
-  background: rgba(255, 255, 255, 0.16);
+.cal-arc-item:hover .cal-arc-circle {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Selected Crest Badge (Clean, No Glow) */
+.cal-arc-item.selected .cal-arc-top {
   color: #ffffff;
-  transform: translateY(-1px);
-}
-
-.cal-month-pill.selected {
-  background: #ffffff;
-  color: #0e1338;
   font-weight: 700;
-  border-color: #ffffff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  transform: scale(1.02);
 }
 
-/* YEAR TAB: Grid & Scroll */
-.cal-year-grid-wrap {
-  margin: 6px 0 16px;
-  max-height: 165px;
-  overflow-y: auto;
-  padding-right: 4px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
-  animation: fadeIn 0.2s ease-out;
-}
-
-.cal-year-grid-wrap::-webkit-scrollbar {
-  width: 5px;
-}
-
-.cal-year-grid-wrap::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.25);
-  border-radius: 4px;
-}
-
-.cal-year-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.cal-year-pill {
-  padding: 10px 4px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 14px;
-  font-weight: 600;
-  font-family: var(--font);
-  cursor: pointer;
-  text-align: center;
-  transition: all 0.2s ease;
-}
-
-.cal-year-pill:hover {
-  background: rgba(255, 255, 255, 0.16);
+.cal-arc-item.selected .cal-arc-circle {
+  background: rgba(62, 92, 142, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.88);
+  box-shadow: none !important; /* No glow */
   color: #ffffff;
-  transform: translateY(-1px);
-}
-
-.cal-year-pill.selected {
-  background: #ffffff;
-  color: #0e1338;
   font-weight: 700;
-  border-color: #ffffff;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  transform: scale(1.02);
 }
 
-/* Bottom Footer (Matching Reference "Add a note..." & "+ New Event") */
+/* Bottom Footer */
 .cal-footer-bar {
   display: flex;
   align-items: center;
@@ -1102,15 +992,21 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   margin-top: 4px;
+  width: 100%;
 }
 
 .cal-footer-note {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: rgba(255, 255, 255, 0.7);
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.72);
   font-size: 13px;
   font-weight: 500;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cal-footer-note .ms {
@@ -1118,6 +1014,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   width: 18px;
   height: 18px;
   color: var(--primary);
+  flex-shrink: 0;
 }
 
 .cal-footer-btn {
@@ -1132,6 +1029,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
+  flex-shrink: 0;
   transition: all 0.2s ease;
   font-family: var(--font);
 }
@@ -1147,23 +1045,16 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   height: 16px;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 @media (max-width: 480px) {
   .cal-big-month {
     font-size: 32px;
   }
   .cal-big-day {
-    font-size: 46px;
+    font-size: 48px;
   }
-  .cal-month-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  .cal-year-grid {
-    grid-template-columns: repeat(3, 1fr);
+  .cal-tab-btn {
+    padding: 6px 14px;
+    font-size: 12px;
   }
 }
 

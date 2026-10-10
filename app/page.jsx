@@ -422,8 +422,9 @@ export default function OrbitApp() {
 
   // Profile Calendar Widget state
   const [calendarTab, setCalendarTab] = useState("day"); // "day" | "month" | "year"
-  const dayScrollRef = useRef(null);
-  const yearScrollRef = useRef(null);
+  const calDragRef = useRef({ startX: 0, deltaX: 0, isDragging: false });
+  const [calDragOffset, setCalDragOffset] = useState(0);
+  const [isCalDragging, setIsCalDragging] = useState(false);
 
   const [deckIndex, setDeckIndex] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
@@ -781,12 +782,129 @@ export default function OrbitApp() {
     setProfile(newProf);
   };
 
-  const shiftDay = (delta) => {
-    const maxD = new Date(currentBirthParts.year, currentBirthParts.month, 0).getDate();
-    let nextD = currentBirthParts.day + delta;
-    if (nextD < 1) nextD = 1;
-    if (nextD > maxD) nextD = maxD;
-    updateBirthDate(currentBirthParts.year, currentBirthParts.month, nextD);
+  const stepCalItem = (direction) => {
+    if (calendarTab === "day") {
+      const maxD = new Date(currentBirthParts.year, currentBirthParts.month, 0).getDate();
+      const nextD = Math.max(1, Math.min(maxD, currentBirthParts.day + direction));
+      updateBirthDate(currentBirthParts.year, currentBirthParts.month, nextD);
+    } else if (calendarTab === "month") {
+      const nextM = Math.max(1, Math.min(12, currentBirthParts.month + direction));
+      updateBirthDate(currentBirthParts.year, nextM, currentBirthParts.day);
+    } else if (calendarTab === "year") {
+      const nextY = Math.max(1930, Math.min(2026, currentBirthParts.year + direction));
+      updateBirthDate(nextY, currentBirthParts.month, currentBirthParts.day);
+    }
+  };
+
+  const handleCalTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      calDragRef.current.startX = e.touches[0].clientX;
+      calDragRef.current.deltaX = 0;
+      calDragRef.current.isDragging = true;
+      setIsCalDragging(true);
+    }
+  };
+
+  const handleCalTouchMove = (e) => {
+    if (!calDragRef.current.isDragging || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - calDragRef.current.startX;
+    calDragRef.current.deltaX = dx;
+    const damped = Math.sign(dx) * Math.min(Math.abs(dx), 80);
+    setCalDragOffset(damped);
+  };
+
+  const handleCalTouchEnd = () => {
+    if (!calDragRef.current.isDragging) return;
+    calDragRef.current.isDragging = false;
+    setIsCalDragging(false);
+    setCalDragOffset(0);
+    const dx = calDragRef.current.deltaX;
+    if (dx > 20) {
+      stepCalItem(-1);
+    } else if (dx < -20) {
+      stepCalItem(1);
+    }
+    calDragRef.current.deltaX = 0;
+  };
+
+  const handleCalMouseDown = (e) => {
+    calDragRef.current.startX = e.clientX;
+    calDragRef.current.deltaX = 0;
+    calDragRef.current.isDragging = true;
+    setIsCalDragging(true);
+  };
+
+  const handleCalMouseMove = (e) => {
+    if (!calDragRef.current.isDragging) return;
+    const dx = e.clientX - calDragRef.current.startX;
+    calDragRef.current.deltaX = dx;
+    const damped = Math.sign(dx) * Math.min(Math.abs(dx), 80);
+    setCalDragOffset(damped);
+  };
+
+  const handleCalMouseUp = () => {
+    if (!calDragRef.current.isDragging) return;
+    calDragRef.current.isDragging = false;
+    setIsCalDragging(false);
+    setCalDragOffset(0);
+    const dx = calDragRef.current.deltaX;
+    if (dx > 20) {
+      stepCalItem(-1);
+    } else if (dx < -20) {
+      stepCalItem(1);
+    }
+    calDragRef.current.deltaX = 0;
+  };
+
+  const getArchItems = () => {
+    const offsets = [-3, -2, -1, 0, 1, 2, 3];
+
+    if (calendarTab === "day") {
+      const maxD = new Date(currentBirthParts.year, currentBirthParts.month, 0).getDate();
+      return offsets.map((k) => {
+        const d = currentBirthParts.day + k;
+        if (d < 1 || d > maxD) return { k, hidden: true };
+        const dObj = new Date(currentBirthParts.year, currentBirthParts.month - 1, d);
+        const weekday = WEEKDAY_NAMES[dObj.getDay()];
+        return {
+          k,
+          val: d,
+          top: weekday,
+          bottom: String(d),
+          hidden: false,
+          isSelected: k === 0
+        };
+      });
+    }
+
+    if (calendarTab === "month") {
+      return offsets.map((k) => {
+        const m = currentBirthParts.month + k;
+        if (m < 1 || m > 12) return { k, hidden: true };
+        return {
+          k,
+          val: m,
+          top: String(m).padStart(2, "0"),
+          bottom: MONTH_NAMES[m - 1].slice(0, 3),
+          hidden: false,
+          isSelected: k === 0
+        };
+      });
+    }
+
+    // calendarTab === "year"
+    return offsets.map((k) => {
+      const y = currentBirthParts.year + k;
+      if (y < 1930 || y > 2026) return { k, hidden: true };
+      return {
+        k,
+        val: y,
+        top: `'${String(y).slice(-2)}`,
+        bottom: String(y),
+        hidden: false,
+        isSelected: k === 0
+      };
+    });
   };
 
   const handleJumpToToday = () => {
@@ -794,24 +912,6 @@ export default function OrbitApp() {
     updateBirthDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
     showSnack("Jumped to today's date");
   };
-
-  useEffect(() => {
-    if (calendarTab === "day" && dayScrollRef.current) {
-      const el = document.getElementById(`cal-day-${currentBirthParts.day}`);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-      }
-    }
-  }, [calendarTab, currentBirthParts.day, currentBirthParts.month]);
-
-  useEffect(() => {
-    if (calendarTab === "year" && yearScrollRef.current) {
-      const el = document.getElementById(`cal-year-${currentBirthParts.year}`);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    }
-  }, [calendarTab, currentBirthParts.year]);
 
   const handleBirthChange = (e) => {
     const val = e.target.value;
@@ -1581,107 +1681,64 @@ export default function OrbitApp() {
                 </div>
               </div>
 
-              {/* TAB 1: DAY SELECTOR REEL (with curved arc line & weekdays) */}
-              {calendarTab === "day" && (
-                <div className="cal-day-reel-wrapper">
-                  <div className="cal-arc-bg" aria-hidden="true">
-                    <svg viewBox="0 0 500 40" preserveAspectRatio="none" className="cal-arc-svg">
-                      <path d="M 0,34 Q 250,6 500,34" fill="none" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="1.5" />
-                    </svg>
-                  </div>
+              {/* Unified Arched Reel Stage (Identical Curved Interaction for Day, Month, and Year) */}
+              <div
+                className="cal-arc-stage"
+                role="region"
+                aria-label={`Select ${calendarTab}`}
+                onTouchStart={handleCalTouchStart}
+                onTouchMove={handleCalTouchMove}
+                onTouchEnd={handleCalTouchEnd}
+                onMouseDown={handleCalMouseDown}
+                onMouseMove={handleCalMouseMove}
+                onMouseUp={handleCalMouseUp}
+                onMouseLeave={handleCalMouseUp}
+              >
+                {/* Underlying Curved Arch Line */}
+                <div className="cal-arc-bg" aria-hidden="true">
+                  <svg viewBox="0 0 340 50" preserveAspectRatio="none" className="cal-arc-svg">
+                    <path d="M 12,46 Q 170,12 328,46" fill="none" stroke="rgba(255, 255, 255, 0.22)" strokeWidth="1.5" />
+                  </svg>
+                </div>
 
-                  <div className="cal-day-reel-controls">
+                {/* Arched Items Riding Along the Curved Underline */}
+                {getArchItems().map((item) => {
+                  if (item.hidden) return null;
+                  const k = item.k;
+                  const x = k * 45 + (isCalDragging ? calDragOffset * 0.45 : 0);
+                  const y = k * k * 3.4;
+                  const scale = k === 0 ? 1 : Math.max(0.72, 1 - Math.abs(k) * 0.08);
+                  const opacity = k === 0 ? 1 : Math.max(0.18, 1 - Math.abs(k) * 0.26);
+                  const zIndex = 10 - Math.abs(k);
+
+                  return (
                     <button
+                      key={`${calendarTab}-${item.val}`}
                       type="button"
-                      className="cal-nav-arrow"
-                      aria-label="Previous day"
-                      onClick={() => shiftDay(-1)}
+                      className={`cal-arc-item ${item.isSelected ? "selected" : ""}`}
+                      style={{
+                        transform: `translate(calc(-50% + ${x}px), ${y}px) scale(${scale})`,
+                        opacity: opacity,
+                        zIndex: zIndex,
+                        transition: isCalDragging
+                          ? "none"
+                          : "transform 0.52s cubic-bezier(0.34, 1.45, 0.64, 1), opacity 0.35s ease"
+                      }}
+                      onClick={() => {
+                        if (Math.abs(calDragRef.current.deltaX) < 6) {
+                          if (k !== 0) stepCalItem(k);
+                        }
+                      }}
+                      aria-label={`Select ${calendarTab} ${item.bottom}`}
                     >
-                      <span className="ms" aria-hidden="true">chevron_left</span>
+                      <span className="cal-arc-top">{item.top}</span>
+                      <div className="cal-arc-circle">
+                        <span>{item.bottom}</span>
+                      </div>
                     </button>
-
-                    <div className="cal-day-scroll" ref={dayScrollRef}>
-                      {Array.from(
-                        { length: new Date(currentBirthParts.year, currentBirthParts.month, 0).getDate() },
-                        (_, i) => i + 1
-                      ).map((d) => {
-                        const isSelected = d === currentBirthParts.day;
-                        const weekday = WEEKDAY_NAMES[new Date(currentBirthParts.year, currentBirthParts.month - 1, d).getDay()];
-                        return (
-                          <button
-                            type="button"
-                            key={d}
-                            id={`cal-day-${d}`}
-                            className={`cal-day-item ${isSelected ? "selected" : ""}`}
-                            onClick={() => updateBirthDate(currentBirthParts.year, currentBirthParts.month, d)}
-                            aria-label={`${MONTH_NAMES[currentBirthParts.month - 1]} ${d}, ${weekday}`}
-                          >
-                            <span className="cal-day-weekday">{weekday}</span>
-                            <div className="cal-day-circle">
-                              <span>{d}</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <button
-                      type="button"
-                      className="cal-nav-arrow"
-                      aria-label="Next day"
-                      onClick={() => shiftDay(1)}
-                    >
-                      <span className="ms" aria-hidden="true">chevron_right</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: MONTH GRID */}
-              {calendarTab === "month" && (
-                <div className="cal-month-grid" role="listbox" aria-label="Select month">
-                  {MONTH_NAMES.map((name, idx) => {
-                    const monthNum = idx + 1;
-                    const isSelected = monthNum === currentBirthParts.month;
-                    return (
-                      <button
-                        type="button"
-                        key={name}
-                        className={`cal-month-pill ${isSelected ? "selected" : ""}`}
-                        onClick={() => {
-                          updateBirthDate(currentBirthParts.year, monthNum, currentBirthParts.day);
-                        }}
-                      >
-                        {name.slice(0, 3)}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* TAB 3: YEAR GRID */}
-              {calendarTab === "year" && (
-                <div className="cal-year-grid-wrap" ref={yearScrollRef}>
-                  <div className="cal-year-grid" role="listbox" aria-label="Select year">
-                    {YEAR_LIST.map((y) => {
-                      const isSelected = y === currentBirthParts.year;
-                      return (
-                        <button
-                          type="button"
-                          key={y}
-                          id={`cal-year-${y}`}
-                          className={`cal-year-pill ${isSelected ? "selected" : ""}`}
-                          onClick={() => {
-                            updateBirthDate(y, currentBirthParts.month, currentBirthParts.day);
-                          }}
-                        >
-                          {y}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                  );
+                })}
+              </div>
 
               {/* Bottom Bar: Matching Reference note info & action button */}
               <div className="cal-footer-bar">
