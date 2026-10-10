@@ -1490,7 +1490,6 @@ export default function OrbitApp() {
                         key={s.n}
                         className={`deck-card ${isAct ? "active" : ""} ${isAdj ? "adjacent" : ""}`}
                         style={{ transform, opacity, zIndex }}
-                        onClick={() => selectSignCard(idx)}
                       >
                         <div className="deck-card-avatar">
                           <img

@@ -26,7 +26,7 @@
   box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);
 }
 html{scroll-padding-top:env(safe-area-inset-top,0px);scroll-behavior:smooth}
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{
   font-family:var(--font);
   background:var(--surface);
@@ -250,6 +250,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   cursor:grab;
   border-radius:20px;
   outline:none;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  -webkit-user-select:none;
 }
 .sign-deck-wrapper:active{
   cursor:grabbing;
@@ -259,6 +262,9 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   width:220px;
   height:290px;
   transform-style:preserve-3d;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  -webkit-user-select:none;
 }
 .deck-card{
   position:absolute;
@@ -279,15 +285,18 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   transition:transform .4s cubic-bezier(.25,1,.5,1), opacity .4s ease, box-shadow .4s ease, border-color .4s ease;
   pointer-events:none;
   box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+  outline:none;
+  user-select:none;
+  -webkit-user-select:none;
 }
 .deck-card.active{
-  pointer-events:auto;
+  pointer-events:none;
   border-color:rgba(252,168,164,.6);
   box-shadow:0 18px 40px rgba(0,0,0,.6), 0 0 24px rgba(252,164,159,.2);
 }
 .deck-card.adjacent{
-  pointer-events:auto;
-  cursor:pointer;
+  pointer-events:none;
 }
 .deck-card-avatar{
   width:130px;
@@ -310,6 +319,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   padding:0;
   filter:drop-shadow(0 10px 18px rgba(0,0,0,.55));
   transition:transform .35s ease, filter .35s ease;
+  pointer-events:none;
+  -webkit-user-drag:none;
+  user-select:none;
+  -webkit-user-select:none;
 }
 .deck-card.active .deck-card-img{
   transform:scale(1.08);
