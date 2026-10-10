@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="theme-color" content="#0e1335">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orbit · Daily Horoscope</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400..700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=block">
+<style>
+:root{
+  color-scheme:dark;
+  --surface:#0e1335;
+  --surface-gradient:radial-gradient(135% 85% at 50% -10%, #1c2356 0%, #10153b 45%, #0a0d26 100%);
+  --card:#161c46;
+  --card-gradient:linear-gradient(180deg, #1b2352 0%, #141940 100%);
+  --card-border:rgba(255,255,255,0.08);
+  --card-shadow:0 8px 24px rgba(0,0,0,0.3);
+  --container:#12163b;
+  --outline:#3a467c;
+  --outline-v:rgba(255,255,255,0.08);
+  --on-surface:#f2f5fd;
+  --on-var:#93a0cc;
+  --green:#6ee7b7;
+
+  --primary:#fca8a4;
+  --primary-gradient:linear-gradient(135deg, #ffd6d3 0%, #fca49f 100%);
+  --on-primary:#13183d;
+  --primary-c:#252d5e;
+  --on-primary-c:#fde6e4;
+  --hero-gradient:linear-gradient(160deg, #fee9ea 0%, #fcd5d7 55%, #f6c2c6 100%);
+  --hero-text:#12163b;
+  --hero-muted:#5b6387;
+
+  --font:"Google Sans","Google Sans Flex","Roboto",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);scroll-behavior:smooth}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--font);
+  background:var(--surface);
+  background-image:var(--surface-gradient);
+  background-attachment:fixed;
+  color:var(--on-surface);
+  font-size:14px;
+  line-height:1.5;
+  min-height:100vh;
+}
+.ms{font-family:"Material Symbols Outlined";font-weight:400;font-style:normal;font-size:24px;line-height:1;display:inline-block;width:24px;height:24px;overflow:hidden;white-space:nowrap;letter-spacing:normal;text-transform:none;direction:ltr;-webkit-font-feature-settings:"liga";font-feature-settings:"liga";font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;vertical-align:middle;flex:none}
+.ms.fill{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+
+/* App bar */
+.bar{display:flex;align-items:center;gap:12px;height:64px;padding:0 16px;max-width:880px;margin:0 auto}
+.bar .logo{width:36px;height:36px;border-radius:50%;background:var(--primary-gradient);color:var(--on-primary);display:grid;place-items:center;box-shadow:0 3px 12px rgba(252,164,159,.3)}
+.bar .logo .ms{font-size:22px;width:22px;height:22px}
+.bar h1{font-size:22px;font-weight:500;letter-spacing:-.2px;flex:1}
+.bar .date{color:var(--on-var);font-size:13px;letter-spacing:.2px}
+
+.app{max-width:880px;margin:0 auto;padding:8px 16px 120px}
+
+/* Navigation (modern frosted dark bar on mobile, rail on desktop) */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;background:rgba(14,18,44,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,.06);padding:10px 8px calc(14px + env(safe-area-inset-bottom,0px));gap:4px}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;border:0;background:none;cursor:pointer;font:500 12px var(--font);color:var(--on-var);transition:color .2s}
+.nav .pill{width:64px;height:32px;border-radius:16px;display:grid;place-items:center;transition:all .25s ease}
+.nav button:hover .pill{background:rgba(255,255,255,.08)}
+.nav button.active{color:#ffffff}
+.nav button.active .pill{background:var(--primary-gradient);color:var(--on-primary);box-shadow:0 3px 12px rgba(252,164,159,.35)}
+.nav button.active .ms{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
+
+.view{display:none}
+.view.active{display:block;animation:in .25s ease-out}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+h2{font-size:24px;font-weight:400;line-height:32px}
+h3{font-size:16px;font-weight:500}
+.label{font-size:12px;font-weight:500;letter-spacing:.5px;color:var(--primary);text-transform:uppercase}
+.muted{color:var(--on-var)}
+.stack>*+*{margin-top:12px}
+
+/* Cards & Hero Card */
+.card{border:1px solid var(--card-border);border-radius:22px;padding:20px;background:var(--card-gradient);box-shadow:var(--card-shadow)}
+.card.filled{
+  background:var(--hero-gradient);
+  border:none;
+  color:var(--hero-text);
+  border-radius:28px;
+  box-shadow:0 12px 32px rgba(9,12,35,.45);
+}
+.card.filled h2{color:var(--hero-text);font-weight:600}
+.card.filled .label{color:#82424f;font-weight:600}
+.card.filled .muted{color:var(--hero-muted)}
+.card.filled .hero{display:flex;align-items:center;gap:16px;margin-top:12px}
+.card.filled .sign{
+  width:76px;height:76px;
+  background:none;color:#fee9ea;
+  display:grid;place-items:center;font-size:36px;flex:none;
+  box-shadow:none;border:none;
+  overflow:visible;padding:0;
+  font-family:"Segoe UI Symbol","Noto Sans Symbols","Apple Symbols",var(--font);
+}
+.card.filled .sign img{
+  filter:drop-shadow(0 6px 14px rgba(0,0,0,.4));
+}
+.card.filled .sign-name{font-size:28px;line-height:36px;font-weight:600;color:var(--hero-text)}
+.card.filled .banner{
+  display:flex;align-items:center;gap:12px;margin-top:18px;
+  padding:12px 14px;border-radius:18px;
+  background:rgba(255,255,255,.65);
+  backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.5);
+  color:var(--hero-text);
+  flex-wrap:wrap;
+}
+.card.filled .banner span.t{flex:1;min-width:180px;color:#181d3d;font-weight:500}
+.card.filled .banner .btn.text{color:#13183d;font-weight:600;padding:0 8px}
+
+.grid{display:grid;gap:12px}
+
+/* Stats (matching circle stats from reference design) */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
+.stat{
+  background:linear-gradient(180deg, #1b2352 0%, #141940 100%);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;
+  padding:14px 16px;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);
+}
+.stat small{display:block;color:var(--on-var);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:500;margin-bottom:2px}
+.stat b{font-weight:600;font-size:18px;color:#ffffff}
+
+.lead{font-size:18px;line-height:28px;margin-top:8px}
+.topic .head{display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--primary)}
+.topic .head h3{color:var(--on-surface)}
+.topic p{color:var(--on-var);line-height:22px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 24px;border-radius:9999px;border:0;font:600 14px var(--font);cursor:pointer;transition:transform .15s ease,box-shadow .2s,background .2s}
+.btn:active{transform:scale(.98)}
+.btn .ms{font-size:18px;width:18px;height:18px;margin-left:-8px}
+.btn.filled{background:var(--primary-gradient);color:var(--on-primary);box-shadow:0 4px 14px rgba(252,164,159,.3)}
+.btn.filled:hover{background:linear-gradient(135deg, #ffe0dd 0%, #fbb4af 100%);box-shadow:0 6px 18px rgba(252,164,159,.45)}
+.btn.tonal{background:rgba(255,255,255,.08);color:var(--on-primary-c);border:1px solid rgba(255,255,255,.08)}
+.btn.tonal:hover{background:rgba(255,255,255,.14);box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.btn.outlined{background:none;border:1px solid rgba(252,164,159,.45);color:var(--primary)}
+.btn.outlined:hover{background:rgba(252,164,159,.12)}
+.btn.text{background:none;color:var(--primary);padding:0 12px}
+.btn.text:hover{background:rgba(252,164,159,.1)}
+.btn:disabled{opacity:.38;cursor:default;box-shadow:none}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.iconbtn{width:40px;height:40px;border-radius:50%;border:0;background:none;color:var(--on-var);cursor:pointer;display:grid;place-items:center;flex:none;transition:background .2s}
+.iconbtn:hover{background:rgba(255,255,255,.08);color:var(--on-surface)}
+
+/* Outlined text fields with floating labels */
+.field{position:relative;margin-top:24px}
+.field input,.field textarea,.field select{width:100%;padding:16px;border:1px solid rgba(255,255,255,.14);border-radius:12px;background:rgba(255,255,255,.03);font:16px var(--font);color:var(--on-surface);outline:none;appearance:none;-webkit-appearance:none;transition:border-color .2s,box-shadow .2s}
+.field textarea{resize:vertical;min-height:96px;line-height:24px}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%2393a0cc' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:44px}
+.field label{position:absolute;left:12px;top:16px;padding:0 6px;background:#18204b;border-radius:4px;color:var(--on-var);font-size:16px;pointer-events:none;transition:all .15s ease;line-height:1}
+.field input:hover,.field textarea:hover,.field select:hover{border-color:rgba(255,255,255,.3)}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(252,164,159,.2)}
+.field input:focus+label,.field textarea:focus+label,.field select:focus+label{color:var(--primary)}
+.field input:focus+label,.field input:not(:placeholder-shown)+label,
+.field textarea:focus+label,.field textarea:not(:placeholder-shown)+label,
+.field.on label{top:-6px;font-size:12px}
+.support{font-size:12px;color:var(--on-var);margin:6px 16px 0;min-height:16px}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.chip{display:inline-flex;align-items:center;height:34px;padding:0 14px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);border-radius:9999px;font-size:13px;font-weight:500;color:#dce1f9}
+
+.section{padding-top:16px;margin-top:16px;border-top:1px solid var(--outline-v)}
+.section p{color:var(--on-var);margin-top:4px;line-height:22px}
+
+/* List */
+.list{list-style:none;margin-top:8px}
+.list li{display:flex;align-items:center;gap:8px;min-height:56px;padding:8px 4px 8px 16px;border-bottom:1px solid var(--outline-v);animation:in .2s ease-out}
+.list li:last-child{border-bottom:0}
+.list li span.tx{flex:1;word-break:break-word;font-size:15px}
+.empty{text-align:center;padding:32px 16px;color:var(--on-var)}
+.empty .ms{font-size:40px;width:40px;height:40px;color:var(--outline);margin-bottom:8px}
+
+.loading{display:flex;flex-direction:column;align-items:center;gap:16px;padding:32px;color:var(--on-var)}
+.spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.1);border-top-color:var(--primary);border-radius:50%;animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.action{text-align:center;padding:36px 20px;border-radius:26px}
+.action .big{font-size:22px;line-height:32px;margin:16px 0 8px;font-weight:500}
+.action .row{justify-content:center}
+.action.done{border-color:var(--green);box-shadow:0 0 20px rgba(110,231,183,.16)}
+.done-tag{display:inline-flex;align-items:center;gap:6px;color:var(--green);font-weight:600;margin-top:12px}
+.done-tag .ms{font-size:20px;width:20px;height:20px}
+
+.foot{margin-top:36px;text-align:center;font-size:12px;color:var(--on-var);line-height:18px}
+
+#snack{position:fixed;left:16px;right:16px;bottom:calc(104px + env(safe-area-inset-bottom,0px));z-index:50;max-width:344px;margin:0 auto;background:linear-gradient(135deg, #fee9ea 0%, #fbd5d7 100%);color:#13183d;font-weight:600;padding:14px 18px;border-radius:14px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.45);opacity:0;transform:translateY(12px);pointer-events:none;transition:.25s cubic-bezier(.2,0,0,1)}
+#snack.show{opacity:1;transform:none}
+
+@media(min-width:840px){
+  body{padding-left:88px}
+  .nav{top:0;bottom:0;right:auto;width:88px;flex-direction:column;justify-content:flex-start;gap:16px;padding:96px 0 24px;background:rgba(14,18,44,.95);border-top:0;border-right:1px solid rgba(255,255,255,.06)}
+  .nav button{flex:none}
+  .bar{margin:0 auto;max-width:880px;width:100%}
+  .app{margin:0 auto;max-width:880px;padding-bottom:48px;width:100%}
+  .grid.three{grid-template-columns:repeat(3,1fr)}
+  .stats{grid-template-columns:repeat(4,1fr)}
+  #snack{bottom:24px;left:88px;right:0;margin:0 auto}
+}
+.tile-h{display:flex;align-items:center;gap:8px;color:var(--primary);margin-bottom:8px}
+.tile-h h3{color:var(--on-surface)}
+.tile-text{font-size:16px;line-height:24px}
+.big-num{font-size:36px;line-height:44px}
+.grid.two{grid-template-columns:1fr}
+@media(min-width:640px){.grid.two{grid-template-columns:repeat(2,1fr)}}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+/* 3D Zodiac Card Deck Carousel */
+.sign-carousel-section{
+  margin-top:20px;
+  position:relative;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.sign-carousel-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+  padding:0 4px;
+}
+.sign-deck-wrapper{
+  position:relative;
+  width:100%;
+  height:330px;
+  perspective:1000px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  touch-action:pan-y;
+  cursor:grab;
+  border-radius:20px;
+  outline:none;
+}
+.sign-deck-wrapper:active{
+  cursor:grabbing;
+}
+.sign-deck{
+  position:relative;
+  width:220px;
+  height:290px;
+  transform-style:preserve-3d;
+}
+.deck-card{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  border-radius:24px;
+  background:linear-gradient(170deg, #252248 0%, #1b173c 55%, #13102c 100%);
+  border:1px solid rgba(252,168,164,.2);
+  box-shadow:0 12px 30px rgba(0,0,0,.45);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:20px 16px;
+  text-align:center;
+  transition:transform .4s cubic-bezier(.25,1,.5,1), opacity .4s ease, box-shadow .4s ease, border-color .4s ease;
+  pointer-events:none;
+  box-sizing:border-box;
+}
+.deck-card.active{
+  pointer-events:auto;
+  border-color:rgba(252,168,164,.6);
+  box-shadow:0 18px 40px rgba(0,0,0,.6), 0 0 24px rgba(252,164,159,.2);
+}
+.deck-card.adjacent{
+  pointer-events:auto;
+  cursor:pointer;
+}
+.deck-card-avatar{
+  width:130px;
+  height:130px;
+  background:none;
+  border:none;
+  box-shadow:none;
+  border-radius:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin-bottom:6px;
+  overflow:visible;
+  flex:none;
+}
+.deck-card-img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  padding:0;
+  filter:drop-shadow(0 10px 18px rgba(0,0,0,.55));
+  transition:transform .35s ease, filter .35s ease;
+}
+.deck-card.active .deck-card-img{
+  transform:scale(1.08);
+  filter:drop-shadow(0 12px 24px rgba(0,0,0,.65)) drop-shadow(0 0 16px rgba(252,164,159,.25));
+}
+.deck-card-fallback-symbol{
+  font-size:48px;
+  color:#fde7e8;
+  display:none;
+  font-family:"Segoe UI Symbol","Noto Sans Symbols","Apple Symbols",var(--font);
+}
+.deck-card-name{
+  font-size:20px;
+  font-weight:600;
+  color:#ffffff;
+  letter-spacing:-.2px;
+}
+.deck-card-dates{
+  font-size:12px;
+  color:var(--primary);
+  font-weight:500;
+  margin-top:2px;
+}
+.deck-card-meta{
+  font-size:11px;
+  color:var(--on-var);
+  margin-top:6px;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+}
+.deck-card-pill{
+  margin-top:14px;
+  padding:5px 16px;
+  border-radius:9999px;
+  font-size:11px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.6px;
+  background:rgba(255,255,255,.08);
+  color:var(--on-var);
+  transition:all .3s ease;
+}
+.deck-card.active .deck-card-pill{
+  background:var(--primary-gradient);
+  color:var(--on-primary);
+  box-shadow:0 3px 10px rgba(252,164,159,.3);
+}
+
+/* Dot pagination */
+.deck-dots{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:6px;
+  margin-top:12px;
+}
+.deck-dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:rgba(255,255,255,.2);
+  cursor:pointer;
+  transition:all .25s ease;
+}
+.deck-dot.active{
+  width:18px;
+  border-radius:3px;
+  background:var(--primary);
+  box-shadow:0 0 8px rgba(252,164,159,.5);
+}
+
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="bar">
+  <div class="logo"><span class="ms fill" aria-hidden="true">brightness_2</span></div>
+  <h1>Orbit</h1>
+  <span class="date" id="todayLabel"></span>
+</div>
+
+<nav class="nav" id="nav">
+  <button data-view="home" class="active"><span class="pill"><span class="ms" aria-hidden="true">home</span></span>Home</button>
+  <button data-view="profile"><span class="pill"><span class="ms" aria-hidden="true">person</span></span>Profile</button>
+  <button data-view="reading"><span class="pill"><span class="ms" aria-hidden="true">auto_awesome</span></span>Reading</button>
+  <button data-view="memory"><span class="pill"><span class="ms" aria-hidden="true">sticky_note_2</span></span>Notes</button>
+  <button data-view="action"><span class="pill"><span class="ms" aria-hidden="true">task_alt</span></span>Action</button>
+</nav>
+
+<main class="app">
+  <!-- HOME -->
+  <section class="view active" id="view-home">
+    <div class="card filled">
+      <div class="label" id="greeting">Welcome</div>
+      <h2 style="margin-top:4px">Welcome to Orbit</h2>
+      <div class="hero">
+        <div class="sign" id="signSymbol"></div>
+        <div>
+          <div class="sign-name" id="signName"></div>
+          <div class="muted" id="signMeta"></div>
+        </div>
+      </div>
+      <div class="banner" id="sampleNotice">
+        <span class="ms" aria-hidden="true">info</span>
+        <span class="t">This is a sample reading. Add your details to personalize it.</span>
+        <button class="btn text" data-go="profile">Set up profile</button>
+      </div>
+    </div>
+
+    <div class="stats" id="stats"></div>
+
+    <div class="grid two" style="margin-top:12px">
+      <div class="card" id="homeActionCard">
+        <div class="tile-h"><span class="ms" aria-hidden="true">task_alt</span><h3>Today's action</h3><span id="homeDoneTag" style="margin-left:auto"></span></div>
+        <p class="tile-text" id="homeAction"></p>
+        <div class="row"><button class="btn filled" id="homeDone">Mark as done</button><button class="btn text" data-go="action">Details</button></div>
+      </div>
+      <div class="card">
+        <div class="tile-h"><span class="ms" aria-hidden="true">sticky_note_2</span><h3>Notes</h3></div>
+        <div class="big-num" id="homeNoteCount">0</div>
+        <p class="muted" id="homeNoteLatest"></p>
+        <div class="row"><button class="btn tonal" data-go="memory">Manage notes</button></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="label">Today's horoscope</div>
+      <p class="lead" id="homeSummary"></p>
+      <div class="row">
+        <button class="btn filled" data-go="reading"><span class="ms" aria-hidden="true">auto_awesome</span>New reading</button>
+        <button class="btn outlined" data-go="profile">Edit profile</button>
+      </div>
+    </div>
+
+    <div class="grid three" style="margin-top:12px">
+      <div class="card topic"><div class="head"><span class="ms" aria-hidden="true">work</span><h3>Career</h3></div><p id="homeCareer"></p></div>
+      <div class="card topic"><div class="head"><span class="ms" aria-hidden="true">favorite</span><h3>Relationships</h3></div><p id="homeRel"></p></div>
+      <div class="card topic"><div class="head"><span class="ms" aria-hidden="true">self_improvement</span><h3>Personal growth</h3></div><p id="homeGrowth"></p></div>
+    </div>
+  </section>
+
+  <!-- PROFILE -->
+  <section class="view" id="view-profile">
+    <div class="card">
+      <h2>Your details</h2>
+      <p class="muted">Saved in this browser only. Nothing is sent anywhere.</p>
+
+      <div class="field on"><input type="date" id="birth"><label for="birth">Birth date</label></div>
+      <div class="support"></div>
+
+      <!-- 3D Zodiac Sign Card Deck Carousel -->
+      <div class="sign-carousel-section">
+        <div class="sign-carousel-header">
+          <label class="label" style="font-size:13px">Choose your sign</label>
+          <span class="muted" style="font-size:12px">Swipe left or right</span>
+        </div>
+        
+        <div class="sign-deck-wrapper" id="signDeckWrapper" tabindex="0" role="region" aria-label="Zodiac sign carousel">
+          <div class="sign-deck" id="signDeck"></div>
+        </div>
+
+        <div class="deck-dots" id="deckDots"></div>
+        <div class="support" id="signHint" style="text-align:center;margin:8px 0 0"></div>
+        <!-- Synced select for form & accessibility compatibility -->
+        <select id="sign" style="display:none" aria-hidden="true"></select>
+      </div>
+
+      <div class="field"><textarea id="goals" maxlength="300" placeholder=" "></textarea><label for="goals">Current goals</label></div>
+      <div class="support">For example: land a first client, save money, pass exams</div>
+
+      <div class="field"><textarea id="situation" maxlength="300" placeholder=" "></textarea><label for="situation">Personal situation</label></div>
+      <div class="support">For example: balancing university and freelance work</div>
+
+      <div class="row">
+        <button class="btn filled" id="saveProfile">Save</button>
+        <button class="btn tonal" id="saveAndRead">Save and generate reading</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- READING -->
+  <section class="view" id="view-reading">
+    <div class="card">
+      <h2>Generate a reading</h2>
+      <p class="muted">Built from JavaScript templates using your sign, profile and notes. It is not real AI or real astrology, just a prompt for reflection.</p>
+      <div class="row"><button class="btn filled" id="genBtn"><span class="ms" aria-hidden="true">auto_awesome</span><span id="genLabel">Generate reading</span></button></div>
+    </div>
+    <div class="card" style="margin-top:12px" id="readingOut"></div>
+  </section>
+
+  <!-- MEMORY -->
+  <section class="view" id="view-memory">
+    <div class="card">
+      <h2>Notes</h2>
+      <p class="muted">Short notes about your goals or situation. They can appear in your readings.</p>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="flex:1"><div class="field"><input type="text" id="noteInput" maxlength="140" placeholder=" " autocomplete="off"><label for="noteInput">Add a note</label></div></div>
+        <button class="btn filled" id="addNote" style="margin-top:24px;height:56px"><span class="ms" aria-hidden="true">add</span>Add</button>
+      </div>
+      <div class="support" id="noteCount"></div>
+      <ul class="list" id="notes"></ul>
+    </div>
+  </section>
+
+  <!-- ACTION -->
+  <section class="view" id="view-action">
+    <div class="card action" id="actionCard">
+      <div class="label">Today's action</div>
+      <div class="big" id="actionText"></div>
+      <div class="muted" id="actionWhy"></div>
+      <div id="doneTag"></div>
+      <div class="row">
+        <button class="btn filled" id="doneBtn">Mark as done</button>
+        <button class="btn outlined" id="anotherBtn"><span class="ms" aria-hidden="true">refresh</span>Show another</button>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">Orbit uses simple JavaScript templates, not AI or real astrology. For reflection and entertainment only.</p>
+</main>
+
+<div id="snack" role="status"></div>
+
+<script>
+(function(){
+  "use strict";
+  var SIGNS=[
+    {n:"Aries",s:"♈",e:"Fire",p:"Mars",d:"Mar 21 – Apr 19"},
+    {n:"Taurus",s:"♉",e:"Earth",p:"Venus",d:"Apr 20 – May 20"},
+    {n:"Gemini",s:"♊",e:"Air",p:"Mercury",d:"May 21 – Jun 20"},
+    {n:"Cancer",s:"♋",e:"Water",p:"the Moon",d:"Jun 21 – Jul 22"},
+    {n:"Leo",s:"♌",e:"Fire",p:"the Sun",d:"Jul 23 – Aug 22"},
+    {n:"Virgo",s:"♍",e:"Earth",p:"Mercury",d:"Aug 23 – Sep 22"},
+    {n:"Libra",s:"♎",e:"Air",p:"Venus",d:"Sep 23 – Oct 22"},
+    {n:"Scorpio",s:"♏",e:"Water",p:"Pluto",d:"Oct 23 – Nov 21"},
+    {n:"Sagittarius",s:"♐",e:"Fire",p:"Jupiter",d:"Nov 22 – Dec 21"},
+    {n:"Capricorn",s:"♑",e:"Earth",p:"Saturn",d:"Dec 22 – Jan 19"},
+    {n:"Aquarius",s:"♒",e:"Air",p:"Uranus",d:"Jan 20 – Feb 18"},
+    {n:"Pisces",s:"♓",e:"Water",p:"Neptune",d:"Feb 19 – Mar 20"}];
+  var CUT=[[1,20,"Aquarius"],[2,19,"Pisces"],[3,21,"Aries"],[4,20,"Taurus"],[5,21,"Gemini"],[6,21,"Cancer"],
+    [7,23,"Leo"],[8,23,"Virgo"],[9,23,"Libra"],[10,23,"Scorpio"],[11,22,"Sagittarius"],[12,22,"Capricorn"]];
+
+  var T={
+    Fire:{
+      opener:["Your energy runs high today, {sign}. Small, bold moves will carry more weight than big plans.",
+        "There is momentum for {sign} today, but it works best when you pause long enough to choose a direction.",
+        "The day rewards courage. Move with intention rather than speed."],
+      career:["Speak up where decisions are made; your clarity will be noticed.",
+        "Start the task you have been circling. Ten honest minutes will break the resistance.",
+        "A small leadership moment may appear unannounced. Say yes to it."],
+      rel:["Warmth opens doors today. Lead with curiosity before opinions.",
+        "Someone close may need your enthusiasm more than your advice.",
+        "Direct, kind honesty will land well. Skip the hint and say the thing."],
+      growth:["Treat patience as a strength. Slowing down is not losing ground.",
+        "Channel restless energy into movement: a walk, a workout, a clean desk.",
+        "Notice where you rush to win. Today, aim to understand instead."]},
+    Earth:{
+      opener:["Steady, grounded energy surrounds {sign} today. Quiet consistency is your real strength.",
+        "The day favours what is built slowly. Trust the foundations you have been laying.",
+        "Your practical instincts are sharp today. Let them guide you past the noise."],
+      career:["Finish one thing properly rather than starting three. Quality gets noticed.",
+        "A detail others overlook is the key to progress. You will spot it.",
+        "Review your plan and tighten it; a small adjustment now saves hours later."],
+      rel:["Show care through reliable actions: a message, a favour, showing up on time.",
+        "Give someone you love ten minutes of full attention. It means more than a grand gesture.",
+        "Be patient with a slow conversation; do not force a conclusion."],
+      growth:["Make space for rest without guilt. Rest is part of the work.",
+        "Simplify one corner of your life: a drawer, a habit, a commitment.",
+        "Allow yourself to enjoy the progress you have already made."]},
+    Air:{
+      opener:["Your mind is quick and curious today, {sign}. Ideas arrive faster than you can write them down.",
+        "Conversation is your doorway today. Good questions will take you further than good answers.",
+        "Plenty of possibilities are open; choose one thread to follow and let the rest wait."],
+      career:["Share an idea early, even half-formed. Feedback will sharpen it quickly.",
+        "Connect two people or concepts that have not met. That bridge is your value today.",
+        "Write it down. A clear outline turns scattered thoughts into a plan."],
+      rel:["Listen for what is not said. A pause may tell you more than the words.",
+        "Reach out to someone you have not spoken to lately; a light message is enough.",
+        "Balance talking with listening today, and the conversation will deepen."],
+      growth:["Give your mind an hour away from screens; clarity follows quiet.",
+        "Pick one question to sit with, and resist solving it immediately.",
+        "Notice when you overthink, then take one small step instead."]},
+    Water:{
+      opener:["Your intuition runs deep today, {sign}. Trust the quiet signals you usually dismiss.",
+        "The emotional tide is gentle but meaningful. Moving with it works better than pushing against it.",
+        "Feelings carry information today. Listen first, then decide."],
+      career:["Trust your read of a person or situation; your instincts are well tuned.",
+        "Work somewhere calm today. Your best output comes without pressure.",
+        "A creative or caring approach will solve a problem logic alone cannot."],
+      rel:["Be honest about how you feel, softly but clearly. It will bring someone closer.",
+        "Protect your energy: kind boundaries are an act of care, not distance.",
+        "A small act of empathy will ripple further than you expect."],
+      growth:["Journal a few lines tonight. Naming a feeling reduces its weight.",
+        "Let yourself release one worry you have been carrying for others.",
+        "Spend a little time near water, music, or silence to reset."]}
+  };
+  var GOAL=["Your goal, “{g}”, is well placed to benefit: choose the smallest step toward it and take it before the day ends.",
+    "With “{g}” on your mind, today favours steady effort over perfect timing.",
+    "Keep “{g}” in view today; one concrete action matters more than a long plan."];
+  var SIT=["You mentioned: “{s}”. Be gentle with yourself there; this is a chapter, not the whole story.",
+    "Given your situation (“{s}”), focus on what is in your control today and let the rest settle.",
+    "About “{s}”: small, honest steps will serve you better than waiting for perfect clarity."];
+  var NOTE=["One of your saved notes says “{n}”. Let it quietly shape your choices today.",
+    "You noted “{n}”. Today is a good day to act on that."];
+  var MOODS=["Focused","Reflective","Energised","Calm","Curious","Hopeful","Determined"];
+  var COLORS=["Blue","Green","Silver","Navy","Teal","Gold"];
+
+  var ACTIONS={
+    career:["Spend 25 focused minutes on the most important task for your career goal, with your phone out of reach.",
+      "Send one message to someone who could help your career: a question, a thank-you, or a small update.",
+      "Write down three skills you want to build this month, then practise one for 15 minutes."],
+    money:["Review your last week of spending and pick one small expense to cut or pause.",
+      "Move a small, fixed amount into savings right now, even if it is tiny.",
+      "Write your money goal as a number and a date, and put it where you will see it."],
+    health:["Take a 20-minute walk without headphones and notice how your body feels.",
+      "Drink a full glass of water now and prepare something healthy for later.",
+      "Do 10 minutes of gentle stretching before bed to tell your body the day is done."],
+    learning:["Study for one 25-minute block, then write three things you learned in your own words.",
+      "Explain what you learned this week out loud, as if teaching a friend.",
+      "Choose one topic, collect two good resources, and read the first page of one."],
+    creative:["Make something small and imperfect for 20 minutes. Do not edit, just finish.",
+      "Collect three images or ideas that inspire you and note why each caught your eye.",
+      "Share one piece of work with someone you trust and ask for one honest observation."],
+    relationships:["Send a sincere message to someone you care about, with no agenda attached.",
+      "Give one person your full attention for ten minutes, phone away.",
+      "Write down what you appreciate about someone close, then tell them one line of it."],
+    calm:["Take five slow breaths, then write the three tasks that truly matter today.",
+      "Switch off notifications for an hour and do one thing at a time.",
+      "Before sleep, write what went well today and one thing you can leave until tomorrow."],
+    general:["Pick the one thing you will be glad you did by tonight, and do it first.",
+      "Tidy your workspace for ten minutes, then start your next task fresh.",
+      "Write down one goal for this week and its very first step. Then do that step."]};
+  var KEYS={
+    career:["job","career","work","promotion","business","client","freelance","interview","launch","startup","portfolio"],
+    money:["money","save","saving","debt","income","budget","invest","rich","earn"],
+    health:["health","fit","gym","weight","exercise","run","sleep","diet","workout","habit"],
+    learning:["learn","study","exam","degree","course","skill","read","university","grade"],
+    creative:["design","art","write","create","music","creative","draw","paint","book"],
+    relationships:["love","relationship","friend","family","partner","marriage","dating","social"],
+    calm:["stress","anxiety","calm","balance","burnout","peace","focus","overwhelm"]};
+  var CAT={career:"career",money:"money",health:"health",learning:"learning",creative:"creative work",relationships:"relationships",calm:"calm and focus",general:"general wellbeing"};
+
+  var K={profile:"orbit_profile",notes:"orbit_notes",state:"orbit_state"};
+  function load(k,f){try{var v=localStorage.getItem(k);return v?JSON.parse(v):f;}catch(e){return f;}}
+  function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+  var profile=load(K.profile,{birth:"",sign:"",goals:"",situation:""});
+  var notes=load(K.notes,[]);
+  var state=load(K.state,{variant:0,actionDate:"",actionVariant:0,actionDone:false});
+
+  var $=function(s){return document.querySelector(s);};
+  function todayKey(){var d=new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();}
+  function hash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+  function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+  function pick(r,a){return a[Math.floor(r()*a.length)];}
+  function clip(t,n){t=(t||"").replace(/\s+/g," ").trim();return t.length>n?t.slice(0,n-1)+"…":t;}
+  function esc(s){var d=document.createElement("div");d.textContent=s;return d.innerHTML;}
+  function signFromDate(v){
+    if(!v)return"";var p=v.split("-");if(p.length<3)return"";var m=+p[1],d=+p[2];
+    if(isNaN(m)||isNaN(d)||m<1||m>12||d<1||d>31)return"";var res="Capricorn";
+    CUT.forEach(function(c){if(m>c[0]||(m===c[0]&&d>=c[1]))res=c[2];});return res;}
+  function signObj(n){return SIGNS.filter(function(s){return s.n===n;})[0];}
+  function snack(msg){
+    var t=$("#snack");t.textContent=msg;t.classList.add("show");
+    clearTimeout(snack.t);snack.t=setTimeout(function(){t.classList.remove("show");},2800);}
+  function hour(r){var h=Math.floor(r()*12)+1,m=Math.floor(r()*12)*5;return h+":"+(m<10?"0":"")+m+" "+(r()>.5?"PM":"AM");}
+
+  function build(){
+    var sample=!profile.sign,name=profile.sign||"Pisces",sg=signObj(name)||signObj("Pisces");
+    var r=rng(hash(todayKey()+"|"+name+"|"+state.variant+"|"+profile.goals+"|"+profile.situation+"|"+notes.length));
+    var t=T[sg.e];
+    var summary=pick(r,t.opener).replace("{sign}",name),career=pick(r,t.career),rel=pick(r,t.rel),growth=pick(r,t.growth);
+    var goal=clip(profile.goals,70),sit=clip(profile.situation,70);
+    var note=notes.length?clip(notes[Math.floor(r()*notes.length)].text,70):"";
+    if(goal){summary+=" "+pick(r,GOAL).replace("{g}",goal);career+=" Keep “"+goal+"” in mind as you choose where to put your effort.";}
+    if(sit){rel+=" "+pick(r,SIT).replace("{s}",sit);}
+    if(note){growth+=" "+pick(r,NOTE).replace("{n}",note);}
+    return{sign:sg,sample:sample,summary:summary,career:career,rel:rel,growth:growth,
+      mood:pick(r,MOODS),num:Math.floor(r()*99)+1,color:pick(r,COLORS),hour:hour(r),
+      used:{goal:!!goal,sit:!!sit,notes:notes.length,birth:profile.birth}};
+  }
+
+  function stat(l,v){return'<div class="stat"><small>'+l+'</small><b>'+v+'</b></div>';}
+  function renderHome(){
+    var R=build(),sg=R.sign,h=new Date().getHours();
+    $("#todayLabel").textContent=new Date().toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
+    $("#greeting").textContent=h<12?"Good morning":h<18?"Good afternoon":"Good evening";
+    $("#signSymbol").innerHTML='<img src="assets/signs/'+sg.n.toLowerCase()+'.png" alt="'+sg.n+'" style="width:100%;height:100%;object-fit:contain;" onerror="this.style.display=\'none\';this.parentElement.textContent=\''+sg.s+'\\uFE0E\';">';
+    $("#signName").textContent=sg.n;
+    $("#signMeta").textContent=sg.e+" sign · ruled by "+sg.p;
+    $("#sampleNotice").style.display=R.sample?"flex":"none";
+    $("#homeSummary").textContent=R.summary;
+    $("#homeCareer").textContent=R.career;
+    $("#homeRel").textContent=R.rel;
+    $("#homeGrowth").textContent=R.growth;
+    var a=currentAction();
+    $("#homeAction").textContent=a.text;
+    $("#homeActionCard").classList.toggle("done",state.actionDone);
+    $("#homeDoneTag").innerHTML=state.actionDone?'<span class="done-tag" style="margin-top:0"><span class="ms fill" aria-hidden="true">check_circle</span>Done</span>':"";
+    $("#homeDone").textContent=state.actionDone?"Undo":"Mark as done";
+    $("#homeDone").className=state.actionDone?"btn tonal":"btn filled";
+    $("#homeNoteCount").textContent=notes.length;
+    $("#homeNoteLatest").textContent=notes.length?"Latest: "+clip(notes[0].text,60):"No notes yet. Add one to personalize your readings.";
+    $("#stats").innerHTML=stat("Mood",R.mood)+stat("Lucky number",R.num)+stat("Colour",R.color)+stat("Best hour",R.hour);
+  }
+  function section(icon,title,text){
+    return'<div class="section"><div style="display:flex;align-items:center;gap:8px;color:var(--primary)"><span class="ms" aria-hidden="true">'+icon+'</span><h3 style="color:var(--on-surface)">'+title+'</h3></div><p>'+esc(text)+'</p></div>';}
+  function renderReading(){
+    var R=build(),c=['<span class="chip">'+R.sign.s+"\uFE0E "+R.sign.n+'</span>'];
+    if(R.used.birth)c.push('<span class="chip">Birth date</span>');
+    if(R.used.goal)c.push('<span class="chip">Your goals</span>');
+    if(R.used.sit)c.push('<span class="chip">Your situation</span>');
+    if(R.used.notes)c.push('<span class="chip">'+R.used.notes+' saved note'+(R.used.notes>1?"s":"")+'</span>');
+    $("#readingOut").innerHTML='<div class="label">Reading '+(state.variant+1)+' · from templates</div>'+
+      '<p class="lead">'+esc(R.summary)+'</p>'+
+      section("work","Career",R.career)+section("favorite","Relationships",R.rel)+section("self_improvement","Personal growth",R.growth)+
+      '<div class="chips">'+c.join("")+'</div>'+
+      (R.sample?'<p class="support" style="margin:12px 0 0">Add your details in Profile for a more personal reading.</p>':"");
+  }
+  function renderNotes(){
+    var ul=$("#notes");ul.innerHTML="";
+    if(!notes.length){
+      ul.innerHTML='<li style="display:block;border:0"><div class="empty"><span class="ms" aria-hidden="true">sticky_note_2</span><div>No notes yet. Add a goal or a short thought above.</div></div></li>';
+    }
+    notes.forEach(function(n){
+      var li=document.createElement("li");
+      var sp=document.createElement("span");sp.className="tx";sp.textContent=n.text;
+      var b=document.createElement("button");b.className="iconbtn";b.setAttribute("aria-label","Delete note");
+      b.innerHTML='<span class="ms" aria-hidden="true">delete</span>';
+      b.addEventListener("click",function(){
+        notes=notes.filter(function(x){return x.id!==n.id;});
+        save(K.notes,notes);renderNotes();refresh();snack("Note deleted");});
+      li.appendChild(sp);li.appendChild(b);ul.appendChild(li);
+    });
+    $("#noteCount").textContent=notes.length?notes.length+" saved note"+(notes.length>1?"s":""):"";
+  }
+  function currentAction(){
+    if(state.actionDate!==todayKey()){state.actionDate=todayKey();state.actionVariant=0;state.actionDone=false;save(K.state,state);}
+    var g=(profile.goals+" "+profile.situation+" "+notes.map(function(n){return n.text;}).join(" ")).toLowerCase();
+    var m=Object.keys(KEYS).filter(function(c){return KEYS[c].some(function(k){return g.indexOf(k)>-1;});});
+    if(!m.length)m=["general"];
+    var cat=m[state.actionVariant%m.length],list=ACTIONS[cat];
+    return{text:list[(hash(todayKey()+cat)+state.actionVariant)%list.length],cat:cat,personal:m[0]!=="general"};
+  }
+  function renderAction(){
+    var a=currentAction();
+    $("#actionText").textContent=a.text;
+    $("#actionWhy").textContent=a.personal?"Chosen because of your focus on "+CAT[a.cat]+".":"Add goals in Profile to get a more personal action.";
+    $("#actionCard").classList.toggle("done",state.actionDone);
+    $("#doneTag").innerHTML=state.actionDone?'<span class="done-tag"><span class="ms fill" aria-hidden="true">check_circle</span>Completed</span>':"";
+    $("#doneBtn").textContent=state.actionDone?"Undo":"Mark as done";
+  }
+  var deckIndex = 0;
+  function initSignDeck(){
+    var deck = $("#signDeck");
+    var dots = $("#deckDots");
+    if(!deck || !dots) return;
+    deck.innerHTML = "";
+    dots.innerHTML = "";
+    SIGNS.forEach(function(s, idx){
+      var card = document.createElement("div");
+      card.className = "deck-card";
+      card.dataset.index = idx;
+      card.dataset.sign = s.n;
+      card.innerHTML = 
+        '<div class="deck-card-avatar">' +
+          '<img src="assets/signs/' + s.n.toLowerCase() + '.png" alt="' + s.n + '" class="deck-card-img" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\';">' +
+          '<div class="deck-card-fallback-symbol">' + s.s + '\uFE0E</div>' +
+        '</div>' +
+        '<div class="deck-card-name">' + s.n + '</div>' +
+        '<div class="deck-card-dates">' + s.d + '</div>' +
+        '<div class="deck-card-meta">' + s.e + ' · ' + s.p + '</div>' +
+        '<div class="deck-card-pill">Select</div>';
+      
+      card.addEventListener("click", function(){
+        setDeckIndex(idx, true);
+      });
+      deck.appendChild(card);
+
+      var dot = document.createElement("div");
+      dot.className = "deck-dot" + (idx === 0 ? " active" : "");
+      dot.setAttribute("role", "button");
+      dot.setAttribute("aria-label", "Go to " + s.n);
+      dot.addEventListener("click", function(){
+        setDeckIndex(idx, true);
+      });
+      dots.appendChild(dot);
+    });
+
+    updateDeckCards();
+    setupDeckGestures();
+  }
+
+  function setDeckIndex(idx, syncSelect){
+    var total = SIGNS.length;
+    deckIndex = (idx % total + total) % total;
+    updateDeckCards();
+    if(syncSelect){
+      sel.value = SIGNS[deckIndex].n;
+      updateSignHint();
+    }
+  }
+
+  function updateDeckCards(){
+    var cards = document.querySelectorAll(".deck-card");
+    var dots = document.querySelectorAll(".deck-dot");
+    var total = SIGNS.length;
+    cards.forEach(function(card, i){
+      var diff = i - deckIndex;
+      while(diff > total / 2) diff -= total;
+      while(diff < -total / 2) diff += total;
+
+      card.classList.remove("active", "adjacent");
+      var pill = card.querySelector(".deck-card-pill");
+
+      if(diff === 0){
+        card.classList.add("active");
+        card.style.transform = "translate3d(0, 0, 0) scale(1)";
+        card.style.opacity = "1";
+        card.style.zIndex = "10";
+        if(pill) pill.textContent = "Selected";
+      } else if(Math.abs(diff) === 1){
+        card.classList.add("adjacent");
+        var x = diff * 92;
+        var rot = diff * -12;
+        card.style.transform = "translate3d(" + x + "px, 0, -45px) scale(0.86) rotateY(" + rot + "deg)";
+        card.style.opacity = "0.75";
+        card.style.zIndex = "8";
+        if(pill) pill.textContent = "Choose";
+      } else if(Math.abs(diff) === 2){
+        var x2 = diff * 138;
+        var rot2 = diff * -20;
+        card.style.transform = "translate3d(" + x2 + "px, 0, -95px) scale(0.72) rotateY(" + rot2 + "deg)";
+        card.style.opacity = "0.35";
+        card.style.zIndex = "6";
+        if(pill) pill.textContent = "Choose";
+      } else {
+        var x3 = diff * 160;
+        card.style.transform = "translate3d(" + x3 + "px, 0, -150px) scale(0.6)";
+        card.style.opacity = "0";
+        card.style.zIndex = "1";
+      }
+    });
+
+    dots.forEach(function(d, i){
+      d.classList.toggle("active", i === deckIndex);
+    });
+  }
+
+  function setupDeckGestures(){
+    var wrapper = $("#signDeckWrapper");
+    if(!wrapper) return;
+    var startX = 0, deltaX = 0, isDragging = false;
+
+    wrapper.addEventListener("touchstart", function(e){
+      if(e.touches.length === 1){
+        startX = e.touches[0].clientX;
+        deltaX = 0;
+      }
+    }, {passive:true});
+
+    wrapper.addEventListener("touchmove", function(e){
+      if(e.touches.length === 1){
+        deltaX = e.touches[0].clientX - startX;
+      }
+    }, {passive:true});
+
+    wrapper.addEventListener("touchend", function(){
+      if(deltaX > 35){
+        setDeckIndex(deckIndex - 1, true);
+      } else if(deltaX < -35){
+        setDeckIndex(deckIndex + 1, true);
+      }
+    });
+
+    wrapper.addEventListener("mousedown", function(e){
+      isDragging = true;
+      startX = e.clientX;
+      deltaX = 0;
+    });
+    window.addEventListener("mousemove", function(e){
+      if(!isDragging) return;
+      deltaX = e.clientX - startX;
+    });
+    window.addEventListener("mouseup", function(){
+      if(!isDragging) return;
+      isDragging = false;
+      if(deltaX > 40){
+        setDeckIndex(deckIndex - 1, true);
+      } else if(deltaX < -40){
+        setDeckIndex(deckIndex + 1, true);
+      }
+    });
+
+    wrapper.addEventListener("keydown", function(e){
+      if(e.key === "ArrowLeft"){ setDeckIndex(deckIndex - 1, true); e.preventDefault(); }
+      else if(e.key === "ArrowRight"){ setDeckIndex(deckIndex + 1, true); e.preventDefault(); }
+    });
+  }
+
+  function updateSignHint(){
+    var b=$("#birth").value;
+    if(!b){$("#signHint").textContent=sel.value?"Selected sign: "+sel.value:"";return;}
+    var auto=signFromDate(b);
+    if(sel.value&&sel.value===auto){$("#signHint").textContent="Set from your birth date. You can swipe to change it.";}
+    else if(sel.value){$("#signHint").textContent="Custom choice (different from birth date).";}
+    else{$("#signHint").textContent="";}
+  }
+
+  function renderProfile(){
+    $("#birth").value=profile.birth||"";
+    $("#goals").value=profile.goals||"";
+    $("#situation").value=profile.situation||"";
+    sel.value=profile.sign||"";
+    var activeSign = profile.sign || (profile.birth ? signFromDate(profile.birth) : "Aries");
+    for(var i=0; i<SIGNS.length; i++){
+      if(SIGNS[i].n === activeSign){
+        setDeckIndex(i, false);
+        break;
+      }
+    }
+    updateSignHint();
+  }
+  function refresh(){renderHome();renderReading();renderAction();}
+
+  function show(v){
+    document.querySelectorAll(".view").forEach(function(x){x.classList.toggle("active",x.id==="view-"+v);});
+    document.querySelectorAll("#nav button").forEach(function(b){b.classList.toggle("active",b.dataset.view===v);});
+    window.scrollTo({top:0,behavior:"smooth"});}
+  document.querySelectorAll("#nav button").forEach(function(b){b.addEventListener("click",function(){show(b.dataset.view);});});
+  document.querySelectorAll("[data-go]").forEach(function(b){b.addEventListener("click",function(){show(b.dataset.go);});});
+
+  var sel=$("#sign");
+  sel.innerHTML='<option value="">Choose your sign</option>'+SIGNS.map(function(s){return'<option value="'+s.n+'">'+s.n+'</option>';}).join("");
+  $("#birth").addEventListener("input",function(){
+    var s=signFromDate(this.value);
+    if(s){
+      sel.value=s;
+      for(var i=0; i<SIGNS.length; i++){ if(SIGNS[i].n === s){ setDeckIndex(i, false); break; } }
+    }
+    updateSignHint();
+  });
+  $("#birth").addEventListener("change",function(){
+    var s=signFromDate(this.value);
+    if(s){
+      sel.value=s;
+      for(var i=0; i<SIGNS.length; i++){ if(SIGNS[i].n === s){ setDeckIndex(i, false); break; } }
+    }
+    updateSignHint();
+  });
+  sel.addEventListener("change",function(){
+    for(var i=0; i<SIGNS.length; i++){ if(SIGNS[i].n === sel.value){ setDeckIndex(i, false); break; } }
+    updateSignHint();
+  });
+
+  function saveProfile(){
+    if(!sel.value && SIGNS[deckIndex]) sel.value = SIGNS[deckIndex].n;
+    profile={birth:$("#birth").value,sign:sel.value,goals:$("#goals").value.trim(),situation:$("#situation").value.trim()};
+    if(!profile.sign&&profile.birth)profile.sign=signFromDate(profile.birth);
+    if(!profile.sign&&SIGNS[deckIndex])profile.sign=SIGNS[deckIndex].n;
+    if(!profile.sign){snack("Choose a zodiac sign or enter a birth date");return false;}
+    save(K.profile,profile);sel.value=profile.sign;refresh();return true;}
+  $("#saveProfile").addEventListener("click",function(){if(saveProfile()){snack("Profile saved");show("home");}});
+  $("#saveAndRead").addEventListener("click",function(){if(saveProfile()){show("reading");generate();}});
+
+  var busy=false;
+  function generate(){
+    if(busy)return;busy=true;
+    var btn=$("#genBtn");btn.disabled=true;
+    $("#readingOut").innerHTML='<div class="loading"><div class="spinner"></div>Filling in your reading template…</div>';
+    setTimeout(function(){
+      state.variant++;save(K.state,state);refresh();
+      btn.disabled=false;$("#genLabel").textContent="Generate another";busy=false;
+      snack("New reading generated");
+    },700);
+  }
+  $("#genBtn").addEventListener("click",generate);
+
+  function addNote(){
+    var i=$("#noteInput"),t=i.value.trim();
+    if(!t){snack("Write a short note first");return;}
+    notes.unshift({id:Date.now()+Math.random(),text:t});
+    save(K.notes,notes);i.value="";renderNotes();refresh();snack("Note saved");}
+  $("#addNote").addEventListener("click",addNote);
+  $("#noteInput").addEventListener("keydown",function(e){if(e.key==="Enter")addNote();});
+
+  $("#doneBtn").addEventListener("click",function(){
+    state.actionDone=!state.actionDone;save(K.state,state);refresh();
+    snack(state.actionDone?"Action completed":"Marked as not done");});
+  $("#anotherBtn").addEventListener("click",function(){
+    currentAction();state.actionVariant++;state.actionDone=false;save(K.state,state);refresh();snack("New action ready");});
+
+  $("#homeDone").addEventListener("click",function(){
+    state.actionDone=!state.actionDone;save(K.state,state);refresh();
+    snack(state.actionDone?"Action completed":"Marked as not done");});
+
+  initSignDeck();
+  renderProfile();renderNotes();refresh();
+  if(state.variant>0)$("#genLabel").textContent="Generate another";
+})();
+</script>
+</body>
+</html>
