@@ -5,6 +5,9 @@ export const metadata = {
   description: 'Daily horoscope, zodiac reflection, and personal guidance.',
 };
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const viewport = {
   themeColor: '#0e1335',
   width: 'device-width',
