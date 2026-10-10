@@ -1709,7 +1709,7 @@ export default function OrbitApp() {
             <p className="muted">Saved in this browser only. Nothing is sent anywhere without your permission.</p>
 
             {/* Guided Intake Banner */}
-            <div style={{ margin: "16px 0", padding: "16px", borderRadius: "18px", background: "linear-gradient(135deg, #1b2352 0%, #171b46 100%)", border: "1px solid rgba(252,168,164,.3)" }}>
+            <div style={{ margin: "16px 0", padding: "16px", borderRadius: "18px", background: "linear-gradient(160deg, rgba(65, 88, 138, 0.45) 0%, rgba(35, 50, 95, 0.65) 100%)", border: "1px solid rgba(255, 255, 255, 0.16)", backdropFilter: "blur(20px)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
                 <div>
                   <div style={{ color: "var(--primary)", fontWeight: "600", fontSize: "14px" }}>
@@ -1848,7 +1848,7 @@ export default function OrbitApp() {
                           zIndex: zIndex,
                           transition: isCalDragging
                             ? "none"
-                            : "transform 0.52s cubic-bezier(0.34, 1.45, 0.64, 1), opacity 0.35s ease"
+                            : "transform 0.32s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.25s ease"
                         }}
                         onClick={() => {
                           if (Math.abs(calDragRef.current.currentX - calDragRef.current.startX) < 6) {
