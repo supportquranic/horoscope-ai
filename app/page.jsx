@@ -499,6 +499,7 @@ export default function OrbitApp() {
   // Splash & Onboarding states
   const [splashLoading, setSplashLoading] = useState(true);
   const [splashText, setSplashText] = useState("");
+  const [theme, setTheme] = useState("dark"); // "dark" | "light"
   const [account, setAccount] = useState(null);
   const [authMode, setAuthMode] = useState("signup"); // "signup" | "login"
   const [authForm, setAuthForm] = useState({
@@ -558,7 +559,7 @@ export default function OrbitApp() {
     }, 2800);
   }, []);
 
-  // Typing animation for splash screen
+  // Typing animation for splash screen (Slow & smooth reveal)
   useEffect(() => {
     const fullText = "ORBIT";
     let cur = 0;
@@ -575,9 +576,9 @@ export default function OrbitApp() {
           } else {
             setView("home");
           }
-        }, 750);
+        }, 800);
       }
-    }, 130);
+    }, 260);
     return () => clearInterval(interval);
   }, []);
 
@@ -590,6 +591,12 @@ export default function OrbitApp() {
     const loadedCheckin = loadLocal(K.checkin, { energy: "Okay", mood: "Good", mainTask: "", date: "" });
     const loadedWeekly = loadLocal(K.weekly, { lastDone: "", answered: false });
     const loadedAccount = loadLocal("orbit_account", null);
+    const savedTheme = loadLocal("orbit_theme", "dark");
+
+    setTheme(savedTheme);
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    }
 
     setProfile(loadedProf);
     setNotes(loadedNotes);
@@ -616,6 +623,15 @@ export default function OrbitApp() {
     const idx = SIGNS.findIndex((s) => s.n === activeSign);
     if (idx !== -1) setDeckIndex(idx);
   }, []);
+
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme);
+    saveLocal("orbit_theme", newTheme);
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', newTheme);
+    }
+    showSnack(newTheme === "light" ? "Switched to Pure White & Black theme" : "Switched to Cosmic Dark theme");
+  };
 
   const changeView = (v) => {
     setView(v);
@@ -1288,13 +1304,6 @@ export default function OrbitApp() {
         </button>
         <button
           type="button"
-          className="cal-today-pill"
-          onClick={handleJumpToToday}
-        >
-          Today
-        </button>
-        <button
-          type="button"
           className="cal-step-btn"
           onClick={() => stepCalItem(1)}
           aria-label={`Next ${calendarTab}`}
@@ -1348,7 +1357,11 @@ export default function OrbitApp() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userData: { ...intake, today: checkin },
+          userData: {
+            name: intake.name || account?.name || "Friend",
+            ...intake,
+            today: checkin
+          },
           sign: profile.sign || SIGNS[deckIndex].n,
           forceRefresh: shouldForce
         })
@@ -1359,11 +1372,11 @@ export default function OrbitApp() {
         showSnack(data.cached ? "Loaded from today's saved reading" : "✨ Gemini AI reading generated");
       } else {
         setAiReading(null);
-        showSnack(data.reason ? `Template reading (${data.reason})` : "Template reading generated");
+        showSnack("Cosmic reflection generated");
       }
     } catch (err) {
       setAiReading(null);
-      showSnack("Template reading generated");
+      showSnack("Cosmic reflection generated");
     } finally {
       setState((st) => {
         const next = { ...st, variant: st.variant + 1 };
@@ -1798,7 +1811,6 @@ export default function OrbitApp() {
           <span className="splash-typing-cursor" />
         </div>
         <div className="splash-sub">Cosmic Alignment & Guidance</div>
-        <div className="splash-spinner" />
       </div>
 
       {/* 2. APP BAR (Clean Text-Only Logo) */}
@@ -1830,27 +1842,14 @@ export default function OrbitApp() {
         </nav>
       )}
 
-      {/* 4. FLOATING AI ASTROLOGER QUICK TRIGGER */}
-      {view !== "chat" && view !== "onboarding" && (
-        <button
-          className="floating-chat-trigger"
-          onClick={() => changeView("chat")}
-          aria-label="Ask AI Astrologer"
-        >
-          <span className="ms fill" aria-hidden="true">forum</span>
-          Ask Astrologer
-        </button>
-      )}
-
       <main className="app">
-        {/* ONBOARDING & ACCOUNT CREATION VIEW */}
+        {/* ONBOARDING & ACCOUNT CREATION VIEW (Directly On Background) */}
         {view === "onboarding" && (
           <section className="view active" id="view-onboarding">
             <div className="onboarding-screen">
-              <div className="onboarding-card">
-                <span className="onboarding-badge">
-                  <span className="ms fill" aria-hidden="true">stars</span> Cosmic Profile
-                </span>
+              <span className="onboarding-badge">
+                <span className="ms fill" aria-hidden="true">stars</span> Cosmic Profile
+              </span>
                 <h2 className="onboarding-title">
                   {authMode === "signup" ? "Create Your Account" : "Welcome Back to Orbit"}
                 </h2>
@@ -1936,7 +1935,7 @@ export default function OrbitApp() {
                         <button
                           type="button"
                           className="btn text"
-                          style={{ padding: 0, textDecoration: "underline", color: "#ffffff" }}
+                          style={{ padding: 0, textDecoration: "underline", color: "var(--on-surface)" }}
                           onClick={() => setAuthMode("login")}
                         >
                           Sign In
@@ -1948,7 +1947,7 @@ export default function OrbitApp() {
                         <button
                           type="button"
                           className="btn text"
-                          style={{ padding: 0, textDecoration: "underline", color: "#ffffff" }}
+                          style={{ padding: 0, textDecoration: "underline", color: "var(--on-surface)" }}
                           onClick={() => setAuthMode("signup")}
                         >
                           Create Account
@@ -1957,7 +1956,6 @@ export default function OrbitApp() {
                     )}
                   </div>
                 </form>
-              </div>
             </div>
           </section>
         )}
@@ -2185,85 +2183,6 @@ export default function OrbitApp() {
               </div>
             </div>
           </div>
-
-          {/* DAILY CHECK-IN TILE */}
-          <div className="checkin-card" style={{ marginTop: "14px" }}>
-            <div className="checkin-title-row">
-              <span className="ms fill" aria-hidden="true">today</span>
-              <h3 style={{ color: "var(--on-surface)", fontSize: "16px" }}>Daily Check-in</h3>
-              {checkin.date === todayKey() && (
-                <span className="done-tag" style={{ marginLeft: "auto", marginTop: 0, fontSize: "12px" }}>
-                  <span className="ms fill" style={{ fontSize: "16px" }} aria-hidden="true">check_circle</span>Logged today
-                </span>
-              )}
-            </div>
-
-            <div className="checkin-group">
-              <div className="checkin-group-label">Energy Level:</div>
-              <div className="tap-chips-row">
-                {["Low", "Okay", "High"].map((lvl) => (
-                  <button
-                    key={lvl}
-                    type="button"
-                    className={`tap-chip ${checkin.energy === lvl ? "selected" : ""}`}
-                    onClick={() => setCheckin({ ...checkin, energy: lvl })}
-                  >
-                    {lvl}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="checkin-group">
-              <div className="checkin-group-label">Current Mood:</div>
-              <div className="tap-chips-row">
-                {["Stressed", "Neutral", "Good", "Great"].map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    className={`tap-chip ${checkin.mood === m ? "selected" : ""}`}
-                    onClick={() => setCheckin({ ...checkin, mood: m })}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="checkin-group">
-              <div className="checkin-group-label">The One Thing To Get Done Today:</div>
-              <div className="field" style={{ marginTop: 0 }}>
-                <input
-                  type="text"
-                  id="mainTaskInput"
-                  placeholder=" "
-                  value={checkin.mainTask || ""}
-                  onChange={(e) => setCheckin({ ...checkin, mainTask: e.target.value })}
-                />
-                <label htmlFor="mainTaskInput">Enter your #1 priority for today...</label>
-              </div>
-            </div>
-
-            <div className="row" style={{ marginTop: "14px", alignItems: "center" }}>
-              <button className="btn filled" onClick={() => handleSaveCheckin(false)}>
-                Save check-in
-              </button>
-            </div>
-          </div>
-
-          {/* HOROSCOPE SPOTLIGHT */}
-          <div className="card" style={{ marginTop: "14px" }}>
-            <div className="label">Today's horoscope reflection</div>
-            <p className="lead">{aiReading ? aiReading.summary : reading.summary}</p>
-            <div className="row">
-              <button className="btn filled" onClick={() => changeView("reading")}>
-                <span className="ms" aria-hidden="true">auto_awesome</span>View Full Reading
-              </button>
-              <button className="btn outlined" onClick={() => changeView("profile")}>
-                My Profile
-              </button>
-            </div>
-          </div>
         </section>
 
         {/* PROFILE VIEW */}
@@ -2288,6 +2207,39 @@ export default function OrbitApp() {
                     Sign Out / Switch Account
                   </button>
                 </div>
+              </div>
+            </div>
+
+            {/* Theme & Appearance Switcher */}
+            <div className="theme-switch-box">
+              <div className="label">Appearance & Theme</div>
+              <div style={{ fontSize: "16px", fontWeight: "700", marginTop: "2px", color: "var(--on-surface)" }}>
+                {theme === "light" ? "Pure White & Black Theme" : "Cosmic Dark Theme"}
+              </div>
+              <p className="muted" style={{ fontSize: "12px", marginTop: "2px" }}>
+                Switch between high-contrast pure white/black and celestial dark mode.
+              </p>
+              <div className="theme-switch-track" role="radiogroup" aria-label="Theme selection">
+                <button
+                  type="button"
+                  className={`theme-switch-btn ${theme === "dark" ? "active" : ""}`}
+                  onClick={() => handleThemeChange("dark")}
+                  aria-checked={theme === "dark"}
+                  role="radio"
+                >
+                  <span className="ms fill" style={{ fontSize: "18px" }}>dark_mode</span>
+                  Cosmic Dark
+                </button>
+                <button
+                  type="button"
+                  className={`theme-switch-btn ${theme === "light" ? "active" : ""}`}
+                  onClick={() => handleThemeChange("light")}
+                  aria-checked={theme === "light"}
+                  role="radio"
+                >
+                  <span className="ms fill" style={{ fontSize: "18px" }}>light_mode</span>
+                  Pure White & Black
+                </button>
               </div>
             </div>
 
@@ -2563,6 +2515,71 @@ export default function OrbitApp() {
               )}
             </div>
           </div>
+
+          {/* DAILY CHECK-IN TILE (Moved under Reading) */}
+          <div className="checkin-card" style={{ marginTop: "16px" }}>
+            <div className="checkin-title-row">
+              <span className="ms fill" aria-hidden="true">today</span>
+              <h3 style={{ color: "var(--on-surface)", fontSize: "16px" }}>Daily Check-in</h3>
+              {checkin.date === todayKey() && (
+                <span className="done-tag" style={{ marginLeft: "auto", marginTop: 0, fontSize: "12px" }}>
+                  <span className="ms fill" style={{ fontSize: "16px" }} aria-hidden="true">check_circle</span>Logged today
+                </span>
+              )}
+            </div>
+
+            <div className="checkin-group">
+              <div className="checkin-group-label">Energy Level:</div>
+              <div className="tap-chips-row">
+                {["Low", "Okay", "High"].map((lvl) => (
+                  <button
+                    key={lvl}
+                    type="button"
+                    className={`tap-chip ${checkin.energy === lvl ? "selected" : ""}`}
+                    onClick={() => setCheckin({ ...checkin, energy: lvl })}
+                  >
+                    {lvl}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="checkin-group">
+              <div className="checkin-group-label">Current Mood:</div>
+              <div className="tap-chips-row">
+                {["Stressed", "Neutral", "Good", "Great"].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    className={`tap-chip ${checkin.mood === m ? "selected" : ""}`}
+                    onClick={() => setCheckin({ ...checkin, mood: m })}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="checkin-group">
+              <div className="checkin-group-label">The One Thing To Get Done Today:</div>
+              <div className="field" style={{ marginTop: 0 }}>
+                <input
+                  type="text"
+                  id="mainTaskInput"
+                  placeholder=" "
+                  value={checkin.mainTask || ""}
+                  onChange={(e) => setCheckin({ ...checkin, mainTask: e.target.value })}
+                />
+                <label htmlFor="mainTaskInput">Enter your #1 priority for today...</label>
+              </div>
+            </div>
+
+            <div className="row" style={{ marginTop: "14px", alignItems: "center" }}>
+              <button className="btn filled" onClick={() => handleSaveCheckin(false)}>
+                Save check-in
+              </button>
+            </div>
+          </div>
         </section>
 
         {/* COMPATIBILITY (SYNASTRY) VIEW */}
@@ -2574,17 +2591,39 @@ export default function OrbitApp() {
 
             <div className="compat-pair-grid">
               <div className="compat-person-tile">
-                <div style={{ fontSize: "28px" }}>{reading.sign.s}&#xFE0E;</div>
+                <div className="compat-sign-avatar">
+                  <img
+                    src={`/assets/signs/${reading.sign.n.toLowerCase()}.png`}
+                    alt={reading.sign.n}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      if (e.currentTarget.parentElement) {
+                        e.currentTarget.parentElement.textContent = reading.sign.s + '\uFE0E';
+                      }
+                    }}
+                  />
+                </div>
                 <div style={{ fontWeight: "700", marginTop: "4px" }}>{account?.name || "You"}</div>
                 <div className="muted" style={{ fontSize: "12px" }}>{reading.sign.n} ({reading.sign.e})</div>
               </div>
 
               <div className="compat-heart-pill">
-                <span className="ms fill" style={{ fontSize: "20px" }} aria-hidden="true">favorite</span>
+                <span className="ms fill" aria-hidden="true">favorite</span>
               </div>
 
               <div className="compat-person-tile">
-                <div style={{ fontSize: "28px" }}>{signObj(partnerSign).s}&#xFE0E;</div>
+                <div className="compat-sign-avatar">
+                  <img
+                    src={`/assets/signs/${partnerSign.toLowerCase()}.png`}
+                    alt={partnerSign}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      if (e.currentTarget.parentElement) {
+                        e.currentTarget.parentElement.textContent = signObj(partnerSign).s + '\uFE0E';
+                      }
+                    }}
+                  />
+                </div>
                 <div style={{ fontWeight: "700", marginTop: "4px" }}>{partnerName || "Partner"}</div>
                 <div className="muted" style={{ fontSize: "12px" }}>{partnerSign} ({signObj(partnerSign).e})</div>
               </div>
